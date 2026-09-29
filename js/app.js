@@ -730,16 +730,19 @@
     box.appendChild(el('h3', { text: 'Povzetek' }));
     const rows = persons.map(p => {
       const ds = Object.keys(days).filter(d => days[d].includes(p.id)).sort();
+      // Število dni med zaporednimi kopanji v mesecu.
+      const gaps = ds.slice(1).map((d, i) => S.diffDays(ds[i], d));
       return el('tr', { class: p.active === false ? 'inactive' : '' }, [
         el('td', { text: p.name }),
         el('td', { text: p.room || '' }),
         el('td', { text: String(S.intervalOf(p)) }),
         el('td', { text: String(ds.length) }),
-        el('td', { text: ds.map(d => S.shortDate(d)).join(', ') })
+        el('td', { text: ds.map(d => S.shortDate(d)).join(', ') }),
+        el('td', { text: gaps.join(', ') })
       ]);
     });
     box.appendChild(el('table', { class: 'list' }, [
-      el('thead', {}, [el('tr', {}, ['Ime', 'Soba', 'Interval', 'Št. kopanj', 'Datumi'].map(t => el('th', { text: t })))]),
+      el('thead', {}, [el('tr', {}, ['Ime', 'Soba', 'Interval', 'Št. kopanj', 'Datumi', 'Razmak med datumi'].map(t => el('th', { text: t })))]),
       el('tbody', {}, rows)
     ]));
   }

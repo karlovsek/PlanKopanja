@@ -648,9 +648,17 @@
     renderSchedule();
   }
 
+  // Informacije (npr. zamuda, ker vmes ni bilo dovoljenega dneva) se štejejo posebej, ne med opozorila.
+  function countWarnings(warnings) {
+    const info = warnings.filter(w => w.level === 'info').length;
+    return { serious: warnings.length - info, info };
+  }
+
   function renderWarnings(warnings, sched) {
     const box = $('#schedule-warnings');
-    box.appendChild(el('h3', { text: 'Opozorila' + (sched.edited ? ' (razpored je ročno popravljen)' : '') }));
+    const n = countWarnings(warnings);
+    const counts = warnings.length ? ` (${n.serious})` + (n.info ? ` · informacije (${n.info})` : '') : '';
+    box.appendChild(el('h3', { text: 'Opozorila' + counts + (sched.edited ? ' – razpored je ročno popravljen' : '') }));
     if (!warnings.length) {
       box.appendChild(el('p', { class: 'hint', text: 'Ni opozoril.' }));
       return;
@@ -773,8 +781,12 @@
     state.schedules[key] = { days: res.days, edited: false };
     selection = null;
     save();
-    const serious = res.warnings.filter(w => w.level !== 'info').length;
-    setStatus(serious ? `Razpored sestavljen, opozoril: ${serious} (glej spodaj).` : 'Razpored sestavljen brez opozoril.', serious ? 'warn' : 'ok');
+    const n = countWarnings(res.warnings);
+    const infoText = n.info ? `, informacij: ${n.info}` : '';
+    const seeBelow = res.warnings.length ? ' (glej spodaj)' : '';
+    setStatus(n.serious
+      ? `Razpored sestavljen, opozoril: ${n.serious}${infoText}${seeBelow}.`
+      : `Razpored sestavljen brez opozoril${infoText}${seeBelow}.`, n.serious ? 'warn' : 'ok');
     renderSchedule();
   });
 

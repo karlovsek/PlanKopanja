@@ -66,9 +66,12 @@
 
   function capacityOn(corridor, iso) { return dayInfo(corridor, iso).capacity; }
 
+  // Omejitev: dan, ko se oseba ne more kopati (person.blockedDates).
+  function personBlocked(person, iso) { return (person.blockedDates || []).includes(iso); }
+
   function personAllows(person, iso) {
     const a = person.allowedWeekdays || [];
-    return a.length === 0 || a.includes(weekday(iso));
+    return (a.length === 0 || a.includes(weekday(iso))) && !personBlocked(person, iso);
   }
 
   function isAvailable(corridor, person, iso) {
@@ -92,6 +95,7 @@
     return null;
   }
   function personDayIssue(person, iso) {
+    if (personBlocked(person, iso)) return `${person.name}: ${shortDate(iso)} se ne more kopati (omejitev)`;
     return personAllows(person, iso) ? null : `${person.name}: ${shortDate(iso)} (${WEEKDAY_NAMES[weekday(iso)]}) ni dovoljen dan`;
   }
 
@@ -324,7 +328,7 @@
     WEEKDAY_NAMES,
     addDays, diffDays, weekday, monthKey, monthDays, shortDate,
     DEFAULT_CAPACITY, defaultCapacity, dayKind, dayInfo, capacityOn,
-    personAllows, isAvailable, intervalOf, byName,
+    personAllows, personBlocked, isAvailable, intervalOf, byName,
     dayIssue, personDayIssue, scheduleKey,
     knownLastBaths, buildSchedule, analyzeSchedule
   };

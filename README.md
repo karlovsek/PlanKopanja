@@ -24,7 +24,9 @@ Podatki se shranjujejo v brskalnik (`localStorage`) – **redno izvozite varnost
 3. **Razpored** – izberite hodnik in mesec ter kliknite **Sestavi**.
    - Ročni popravki: klik na ime ga izbere (obarvajo se tudi vsi ostali termini te osebe v mesecu), klik na drug dan ga premakne; `×` odstrani; `+` doda osebo.
    - `✎` na dnevu nastavi izjemo (največ oseb ta dan); »Privzeto« izjemo odstrani. Dnevi z izjemo imajo črtkan rob.
-     Po spremembi izjem kliknite **Sestavi**, da se razpored ponovno sestavi.
+     V istem urejevalniku pod »Se ne more kopati:« izberete osebe, ki se ta dan ne morejo kopati (npr. pregled,
+     obisk); `×` omejitev odstrani. Osebe z omejitvijo so v celici dneva izpisane za znakom `⊘` (ne natisnejo se).
+     Po spremembi izjem ali omejitev kliknite **Sestavi**, da se razpored ponovno sestavi.
    - Opombe oseb so ob imenu označene s številko, besedilo opomb je pod koledarjem (tudi na natisu).
    - Pod koledarjem so opozorila (presežena kapaciteta, zamude, nedovoljeni dnevi …) in povzetek po osebah.
    - **Natisni** natisne koledar na list A4 (ležeče).
@@ -34,6 +36,8 @@ Podatki se shranjujejo v brskalnik (`localStorage`) – **redno izvozite varnost
 
 - Kapaciteta dneva = izjema za ta datum, sicer privzeta vrednost glede na vrsto dneva (pon–pet / sobota /
   nedelja ali slovenski praznik). Dnevi s kapaciteto 0 se preskočijo.
+- Oseba se kopa le na dovoljene dni v tednu in ne na dneve z omejitvijo (»se ne more kopati«); razporeditev na tak
+  dan (tudi ročna) je napaka v opozorilih.
 - Rok osebe = zadnje kopanje + interval. Zadnje kopanje se vzame iz razporeda prejšnjih mesecev
   (zato razporede sestavljajte po vrsti); če ga ni, se prvi roki enakomerno razporedijo po prvih dneh meseca.
 - Dan za dnem se izberejo osebe, ki jim je rok potekel (najprej tiste z največjo zamudo in najmanj dovoljenimi dnevi),

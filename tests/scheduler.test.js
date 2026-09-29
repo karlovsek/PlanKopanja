@@ -132,6 +132,32 @@
     eq(r.days['2026-10-20'].length, 4, 'torek 20. 10.');
   });
 
+  // ---------- omejitve oseb po datumih ----------
+  test('personAllows upošteva blokirane datume', () => {
+    const p = { id: 'b', name: 'B', allowedWeekdays: [], blockedDates: ['2026-10-14'] };
+    eq(S.personAllows(p, '2026-10-14'), false, 'blokiran');
+    eq(S.personAllows(p, '2026-10-15'), true, 'drug dan');
+    eq(S.personAllows({ id: 'x', name: 'X' }, '2026-10-14'), true, 'brez polja');
+  });
+  test('Oseba z omejitvijo ni razporejena na blokiran dan', () => {
+    const base = S.buildSchedule(c, makePersons(11), 2026, 10, {});
+    const first = datesOf(base.days, 'p0');
+    const p = makePersons(11);
+    p[0].blockedDates = first.slice(0, 2);
+    const r = S.buildSchedule(c, p, 2026, 10, {});
+    const ds = datesOf(r.days, 'p0');
+    p[0].blockedDates.forEach(d => assert(!ds.includes(d), 'razporejena na blokiran ' + d));
+    assert(Math.abs(S.diffDays(first[0], ds[0])) <= 2, `sosednji dan: ${first[0]} → ${ds[0]}`);
+    const bad = r.warnings.filter(w => w.level !== 'info' && w.text.indexOf(p[0].name) === 0);
+    eq(bad.length, 0, JSON.stringify(bad));
+  });
+  test('Analiza zazna ročno postavitev na blokiran dan', () => {
+    const p = makePersons(1);
+    p[0].blockedDates = ['2026-10-14'];
+    const w = S.analyzeSchedule(c, p, 2026, 10, { '2026-10-14': ['p0'] }, {});
+    assert(w.some(x => x.level === 'error' && /se ne more kopati/.test(x.text)), JSON.stringify(w));
+  });
+
   // ---------- uvoz seznama oseb ----------
   test('Uvoz: CSV z glavo Soba,Priimek in ime', () => {
     const r = Csv.parsePersons('﻿Soba,Priimek in ime\r\n202,NOVAK JANEZ\r\n\r\n207,KRANJC ROZA  MARIJA\r\n');

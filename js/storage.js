@@ -36,6 +36,9 @@
   function normalizePerson(p) {
     const out = Object.assign({}, p);
     ['name', 'room', 'note'].forEach(k => { if (out[k] != null && typeof out[k] !== 'string') out[k] = String(out[k]); });
+    // Dnevi, ko se oseba ne more kopati: urejeno polje veljavnih ISO datumov brez podvojitev.
+    const blocked = Array.isArray(p.blockedDates) ? p.blockedDates : [];
+    out.blockedDates = Array.from(new Set(blocked.filter(d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)))).sort();
     return out;
   }
 

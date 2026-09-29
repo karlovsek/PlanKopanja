@@ -200,6 +200,13 @@ tr.filters input, tr.filters select { width: 100%; min-width: 4rem; font-size: 0
 .cap-edit { background: #f6f2fd; border: 1px solid #d8c9f3; border-radius: 4px; padding: 0.3rem; font-size: 0.85rem; }
 .cap-edit input { width: 4rem; padding: 0.1rem 0.3rem; }
 .cap-edit-buttons { display: flex; gap: 0.3rem; margin-top: 0.3rem; }
+.cap-blocked { margin-top: 0.4rem; padding-top: 0.3rem; border-top: 1px solid #d8c9f3; }
+.cap-blocked ul { list-style: none; margin: 0.2rem 0; padding: 0; }
+.cap-blocked li { display: flex; justify-content: space-between; align-items: center; gap: 0.2rem; }
+.cap-blocked .x { border: 0; background: transparent; padding: 0 0.2rem; font-size: 1rem; line-height: 1; opacity: 0.6; }
+.cap-blocked .x:hover { opacity: 1; }
+.cap-blocked select { width: 100%; margin-top: 0.2rem; font-size: 0.8rem; }
+.day-blocked { font-size: 0.75rem; color: #b04040; }
 
 /* ---------- tiskanje ---------- */
 .print-only { display: none; }

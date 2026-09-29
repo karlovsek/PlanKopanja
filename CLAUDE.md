@@ -29,6 +29,8 @@ browser-only.
 `{ version: 1, corridors: [], persons: [], schedules: {}, ui: {} }`.
 - `schedules` is keyed by `corridorId + '|' + 'YYYY-MM'` (`KSScheduler.scheduleKey`); each value is
   `{ days: { 'YYYY-MM-DD': [personId, ...] }, edited }`.
+- `persons[].blockedDates` (sorted ISO dates) are days the person cannot bathe; `personAllows()` treats them as
+  disallowed, so the algorithm and analysis honour them. Edited in the calendar day editor (✎).
 - `ui` holds the selected tab / corridor / month so the app reopens where the user left it.
 - `storage.js` `normalize()` migrates older corridor formats (`capacityPerDay`, `excludedWeekdays`, …) to
   `capacity: { weekday, saturday, sundayHoliday }` + `dayOverrides: { date: n }`. Keep it backward compatible; JSON

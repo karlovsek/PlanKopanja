@@ -14,6 +14,7 @@
   let state = Store.load();
   let selection = null; // { date, personId } – izbran čip za premik
   let editingDay = null; // datum, za katerega je odprto urejanje izjeme
+  let focusBlocked = false; // po spremembi omejitve se v urejevalniku dneva fokusira izbirnik oseb
   let personSort = { key: 'name', dir: 1 }; // razvrščanje tabele oseb (dir: 1 naraščajoče, -1 padajoče)
 
   // ---------- pomožne ----------
@@ -560,8 +561,8 @@
           el('span', { class: 'day-num', text: String(+d.slice(8)) }),
           el('span', { class: 'day-note', text: note }),
           el('button', {
-            type: 'button', class: 'edit-cap', title: 'Izjema: največ oseb ta dan', text: '✎',
-            onclick: ev => { ev.stopPropagation(); editingDay = editingDay === d ? null : d; renderSchedule(); }
+            type: 'button', class: 'edit-cap', title: 'Uredi dan: največ oseb, omejitve oseb', text: '✎',
+            onclick: ev => { ev.stopPropagation(); editingDay = editingDay === d ? null : d; focusBlocked = false; renderSchedule(); }
           })
         ])
       ]);
@@ -587,7 +588,14 @@
           })
         ]));
       });
-      if (editingDay === d) cell.appendChild(capacityEditor(c, d, info));
+      const blocked = persons.filter(p => S.personBlocked(p, d));
+      if (blocked.length) {
+        cell.appendChild(el('div', {
+          class: 'day-blocked no-print', title: 'Se ne more kopati',
+          text: '⊘ ' + blocked.map(p => p.name).join(', ')
+        }));
+      }
+      if (editingDay === d) cell.appendChild(capacityEditor(c, d, info, persons));
       if (info.valid || ids.length) {
         cell.appendChild(el('span', { class: 'day-count', text: ids.length + ' / ' + cap }));
         cell.appendChild(el('button', {
@@ -612,28 +620,63 @@
     renderSummary(persons, sched.days);
   }
 
-  // Vnosno polje za izjemo (največ oseb) na izbran dan.
-  function capacityEditor(c, d, info) {
+  // Urejevalnik dneva: izjema (največ oseb) in osebe, ki se ta dan ne morejo kopati.
+  function capacityEditor(c, d, info, persons) {
     const input = el('input', { type: 'number', min: 0, value: info.capacity, 'aria-label': 'Največ oseb' });
     const commit = () => {
       const n = parseInt(input.value, 10);
       if (!Number.isFinite(n) || n < 0) { input.focus(); return; }
       setOverride(c, d, n);
     };
+    const close = () => { editingDay = null; renderSchedule(); };
     input.addEventListener('keydown', ev => {
       if (ev.key === 'Enter') { ev.preventDefault(); commit(); }
-      if (ev.key === 'Escape') { ev.stopPropagation(); editingDay = null; renderSchedule(); }
+      if (ev.key === 'Escape') { ev.stopPropagation(); close(); }
     });
-    setTimeout(() => { input.focus(); input.select(); }, 0);
+    const blocked = persons.filter(p => S.personBlocked(p, d));
+    const options = persons.filter(p => p.active !== false && !S.personBlocked(p, d));
+    const sel = el('select', { 'aria-label': 'Dodaj omejitev osebi' }, [el('option', { value: '', text: '— dodaj osebo —' })]
+      .concat(options.map(p => el('option', { value: p.id, text: personLabel(p) }))));
+    sel.addEventListener('change', () => { if (sel.value) setBlocked(d, personById(sel.value), true); });
+    const focusSel = focusBlocked;
+    focusBlocked = false;
+    setTimeout(() => { if (focusSel) sel.focus(); else { input.focus(); input.select(); } }, 0);
     return el('div', { class: 'cap-edit no-print', onclick: ev => ev.stopPropagation() }, [
       el('label', {}, ['Največ oseb ', input]),
       el('div', { class: 'cap-edit-buttons' }, [
         el('button', { type: 'button', class: 'small primary', text: 'Shrani', onclick: commit }),
+        el('button', { type: 'button', class: 'small', text: 'Prekliči', title: 'Zapri brez shranjevanja', onclick: close }),
         info.override
           ? el('button', { type: 'button', class: 'small', text: 'Privzeto', title: 'Odstrani izjemo', onclick: () => setOverride(c, d, null) })
           : null
+      ]),
+      el('div', { class: 'cap-blocked' }, [
+        el('div', { text: 'Se ne more kopati:' }),
+        blocked.length
+          ? el('ul', {}, blocked.map(p => el('li', {}, [
+              el('span', { text: personLabel(p) }),
+              el('button', { type: 'button', class: 'x', title: 'Odstrani omejitev', text: '×', onclick: () => setBlocked(d, p, false) })
+            ])))
+          : null,
+        options.length ? sel : null
       ])
     ]);
+  }
+
+  // Omejitev osebe na dan `d`; urejevalnik dneva ostane odprt.
+  function setBlocked(d, p, on) {
+    const dates = new Set(p.blockedDates || []);
+    if (on) dates.add(d); else dates.delete(d);
+    p.blockedDates = Array.from(dates).sort();
+    focusBlocked = true;
+    save();
+    const sched = state.schedules[currentKey()];
+    const hint = sched ? ' Kliknite »Sestavi«, da se upošteva v razporedu.' : '';
+    const placed = on && sched && (sched.days[d] || []).includes(p.id);
+    setStatus((on
+      ? `Omejitev: ${p.name} se ${S.shortDate(d)} ne more kopati.` + (placed ? ' Opozorilo: ta dan je že v razporedu.' : '')
+      : `Omejitev odstranjena: ${p.name} se ${S.shortDate(d)} lahko kopa.`) + hint, placed ? 'warn' : 'ok');
+    renderSchedule();
   }
 
   function setOverride(c, d, n) {
@@ -755,7 +798,7 @@
     const sel = el('select', { onclick: ev => ev.stopPropagation() }, [el('option', { value: '', text: '— dodaj osebo —' })]
       .concat(options.map(p => el('option', {
         value: p.id,
-        text: personLabel(p) + (p.active === false ? ' – neaktivna' : '')
+        text: personLabel(p) + (p.active === false ? ' – neaktivna' : '') + (S.personBlocked(p, d) ? ' – ne more' : '')
       }))));
     sel.addEventListener('change', () => {
       if (!sel.value) return;

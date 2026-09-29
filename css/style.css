@@ -202,7 +202,11 @@ tr.filters input, tr.filters select { width: 100%; min-width: 4rem; font-size: 0
 .cap-edit-buttons { display: flex; gap: 0.3rem; margin-top: 0.3rem; }
 
 /* ---------- tiskanje ---------- */
+.print-only { display: none; }
 @media print {
+  .print-only { display: inline; }
+  .schedule-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; }
+  #print-time { font-size: 9pt; white-space: nowrap; }
   @page { size: A4 landscape; margin: 10mm; }
   body { background: #fff; font-size: 10pt; }
   .no-print, header, .tab, dialog { display: none !important; }

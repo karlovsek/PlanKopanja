@@ -790,8 +790,12 @@
   });
 
   // Izbran čip (in z njim označeni termini ter cilji premika) se ne natisne – tudi pri tiskanju s Ctrl+P.
+  // V desni kot naslova se vpiše čas tiskanja.
   window.addEventListener('beforeprint', () => {
     if (selection) { selection = null; renderSchedule(); }
+    const d = new Date();
+    const hm = d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0');
+    $('#print-time').textContent = `Natisnjeno: ${d.getDate()}. ${d.getMonth() + 1}. ${d.getFullYear()} ob ${hm}`;
   });
   $('#btn-print').addEventListener('click', () => window.print());
 

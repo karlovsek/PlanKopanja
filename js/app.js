@@ -14,6 +14,8 @@
   let state = Store.load();
   let selection = null; // { date, personId } – izbran čip za premik
   let editingDay = null; // datum, za katerega je odprto urejanje izjeme
+  let personSort = { key: 'name', dir: 1 }; // razvrščanje tabele oseb (dir: 1 naraščajoče, -1 padajoče)
+  let personFilter = {}; // { name, room, interval, weekdays, active } – filtri tabele oseb
 
   // ---------- pomožne ----------
   const $ = (sel, root) => (root || document).querySelector(sel);
@@ -232,6 +234,41 @@
     if (currentCorridorId()) openDialog(personDialog, resetPersonForm, editPerson, p);
   }
 
+  // »Župančič« → »zupancic« (iskanje brez velikih črk in šumnikov)
+  function fold(s) { return (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+
+  function matchesPersonFilter(p) {
+    const f = personFilter;
+    if (f.name && !fold(p.name).includes(fold(f.name))) return false;
+    if (f.room && !fold(p.room).includes(fold(f.room))) return false;
+    if (f.interval && S.intervalOf(p) !== +f.interval) return false;
+    const a = p.allowedWeekdays || [];
+    if (f.weekdays === 'limited' && !a.length) return false;
+    if (f.weekdays && f.weekdays !== 'limited' && a.length && !a.includes(+f.weekdays)) return false;
+    if (f.active && (p.active !== false ? 'da' : 'ne') !== f.active) return false;
+    return true;
+  }
+
+  function wdKey(p) { return WD_ORDER.map((w, i) => (p.allowedWeekdays || []).includes(w) ? i : -1).filter(i => i >= 0); }
+
+  const personSortValue = {
+    name: (a, b) => (a.name || '').localeCompare(b.name || '', 'sl'),
+    note: (a, b) => (a.note || '').localeCompare(b.note || '', 'sl'),
+    room: (a, b) => (a.room || '').localeCompare(b.room || '', 'sl', { numeric: true }),
+    interval: (a, b) => S.intervalOf(a) - S.intervalOf(b),
+    weekdays: (a, b) => {
+      const x = wdKey(a), y = wdKey(b);
+      for (let i = 0; i < Math.min(x.length, y.length); i++) if (x[i] !== y[i]) return x[i] - y[i];
+      return x.length - y.length;
+    },
+    active: (a, b) => (a.active === false) - (b.active === false)
+  };
+
+  function comparePersons(a, b) {
+    if (personSort.key === 'room' && !a.room !== !b.room) return !a.room - !b.room; // brez sobe vedno na konec
+    return personSort.dir * personSortValue[personSort.key](a, b) || byName(a, b);
+  }
+
   function renderPersons() {
     const cid = currentCorridorId();
     $('#persons-empty').hidden = !!cid;
@@ -241,9 +278,19 @@
     const tbody = $('#person-rows');
     tbody.innerHTML = '';
     if (!cid) return;
-    const list = personsOf(cid);
+    const all = personsOf(cid);
+    const list = all.filter(matchesPersonFilter).sort(comparePersons);
+    $$('#tab-persons button.sort').forEach(b => {
+      if (b.dataset.sort === personSort.key) b.parentNode.setAttribute('aria-sort', personSort.dir > 0 ? 'ascending' : 'descending');
+      else b.parentNode.removeAttribute('aria-sort');
+    });
+    const filtered = Object.values(personFilter).some(v => v);
+    $('#persons-count').hidden = !filtered;
+    $('#persons-count span').textContent = `Prikazanih ${list.length} od ${all.length}`;
     if (!list.length) {
-      tbody.appendChild(el('tr', { class: 'empty' }, [el('td', { colspan: 7, text: 'Na tem hodniku ni oseb.' })]));
+      tbody.appendChild(el('tr', { class: 'empty' }, [el('td', {
+        colspan: 7, text: all.length ? 'Ni oseb, ki ustrezajo filtru.' : 'Na tem hodniku ni oseb.'
+      })]));
     }
     list.forEach(p => {
       tbody.appendChild(el('tr', { class: p.active === false ? 'inactive' : '' }, [
@@ -260,6 +307,23 @@
       ]));
     });
   }
+
+  $$('#tab-persons button.sort').forEach(b => b.addEventListener('click', () => {
+    const key = b.dataset.sort;
+    personSort = { key, dir: personSort.key === key ? -personSort.dir : 1 };
+    renderPersons();
+  }));
+
+  $$('#tab-persons [data-filter]').forEach(inp => inp.addEventListener('input', () => {
+    personFilter[inp.dataset.filter] = inp.value.trim();
+    renderPersons();
+  }));
+
+  $('#btn-clear-filter').addEventListener('click', () => {
+    $$('#tab-persons [data-filter]').forEach(inp => { inp.value = ''; });
+    personFilter = {};
+    renderPersons();
+  });
 
   function resetPersonForm() {
     personForm.reset();

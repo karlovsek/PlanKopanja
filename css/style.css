@@ -98,6 +98,12 @@ table.list th { background: #f0f2f4; font-weight: 600; font-size: 0.9rem; }
 table.list td.actions { white-space: nowrap; text-align: right; }
 table.list tr.inactive td { color: var(--muted); }
 table.list .empty td { color: var(--muted); text-align: center; }
+th button.sort { border: 0; background: none; font: inherit; font-weight: 600; padding: 0; cursor: pointer; color: inherit; }
+th button.sort::after { content: ' ↕'; color: var(--muted); opacity: 0.5; }
+th[aria-sort=ascending] button.sort::after { content: ' ▲'; color: inherit; opacity: 1; }
+th[aria-sort=descending] button.sort::after { content: ' ▼'; color: inherit; opacity: 1; }
+table.list tr.filters th { font-weight: normal; padding-top: 0.25rem; padding-bottom: 0.35rem; }
+tr.filters input, tr.filters select { width: 100%; min-width: 4rem; font-size: 0.85rem; padding: 0.15rem 0.3rem; }
 
 .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
 .status { padding: 0.5rem 0.75rem; border-radius: 6px; background: var(--accent-soft); }

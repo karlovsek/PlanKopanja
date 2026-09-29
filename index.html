@@ -70,9 +70,36 @@
       </div>
       <p id="persons-empty" class="hint" hidden>Najprej dodajte hodnik.</p>
       <p id="persons-status" class="status" hidden></p>
+      <p id="persons-count" class="hint" hidden><span></span> ·
+        <button type="button" id="btn-clear-filter" class="small">Počisti filtre</button></p>
       <table class="list">
         <thead>
-          <tr><th>Ime</th><th>Soba</th><th>Interval</th><th>Dovoljeni dnevi</th><th>Aktivna</th><th>Opomba</th><th></th></tr>
+          <tr>
+            <th><button type="button" class="sort" data-sort="name">Ime</button></th>
+            <th><button type="button" class="sort" data-sort="room">Soba</button></th>
+            <th><button type="button" class="sort" data-sort="interval">Interval</button></th>
+            <th><button type="button" class="sort" data-sort="weekdays">Dovoljeni dnevi</button></th>
+            <th><button type="button" class="sort" data-sort="active">Aktivna</button></th>
+            <th><button type="button" class="sort" data-sort="note">Opomba</button></th>
+            <th></th>
+          </tr>
+          <tr class="filters">
+            <th><input type="search" data-filter="name" placeholder="Išči …" aria-label="Išči po imenu"></th>
+            <th><input type="search" data-filter="room" placeholder="Išči …" aria-label="Išči po sobi"></th>
+            <th><input type="search" data-filter="interval" inputmode="numeric" placeholder="dni" aria-label="Interval (dni)"></th>
+            <th><select data-filter="weekdays" aria-label="Dovoljeni dnevi">
+              <option value="">vsi</option>
+              <option value="limited">Samo omejeni</option>
+              <option value="1">Pon</option><option value="2">Tor</option><option value="3">Sre</option>
+              <option value="4">Čet</option><option value="5">Pet</option><option value="6">Sob</option>
+              <option value="0">Ned</option>
+            </select></th>
+            <th><select data-filter="active" aria-label="Aktivna">
+              <option value="">vse</option><option value="da">da</option><option value="ne">ne</option>
+            </select></th>
+            <th></th>
+            <th></th>
+          </tr>
         </thead>
         <tbody id="person-rows"></tbody>
       </table>

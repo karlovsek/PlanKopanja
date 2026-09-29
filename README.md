@@ -18,6 +18,8 @@ Podatki se shranjujejo v brskalnik (`localStorage`) – **redno izvozite varnost
    se interval samodejno predlaga na 7 dni. **Shrani in dodaj novo** shrani osebo in pusti okno odprto za naslednji vnos.
    **Uvozi seznam** doda več oseb naenkrat: prilepite vrstice `soba,ime` (npr. iz Excela ali CSV z glavo
    `Soba,Priimek in ime`; ločilo je lahko vejica, podpičje ali tabulator). Osebe, ki na hodniku že obstajajo, se preskočijo.
+   Klik na glavo stolpca tabelo razvrsti (ponovni klik obrne vrstni red), polja pod glavo jo filtrirajo
+   (iskanje ne loči velikih črk in šumnikov, npr. `zupancic` najde »ŽUPANČIČ«).
 3. **Razpored** – izberite hodnik in mesec ter kliknite **Sestavi**.
    - Ročni popravki: klik na ime ga izbere, klik na drug dan ga premakne; `×` odstrani; `+` doda osebo.
    - `✎` na dnevu nastavi izjemo (največ oseb ta dan); »Privzeto« izjemo odstrani. Dnevi z izjemo imajo črtkan rob.

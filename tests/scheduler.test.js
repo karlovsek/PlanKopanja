@@ -5,6 +5,7 @@
   const isNode = typeof module !== 'undefined' && module.exports;
   const H = isNode ? require('../js/holidays.js') : root.KSHolidays;
   const S = isNode ? require('../js/scheduler.js') : root.KSScheduler;
+  const Csv = isNode ? require('../js/csv.js') : root.KSCsv;
 
   const results = [];
   function test(name, fn) {
@@ -129,6 +130,26 @@
     assert(!r.days['2026-10-15'], '15. 10. izključen');
     eq(r.days['2026-10-18'].length, 1, 'nedelja 18. 10.');
     eq(r.days['2026-10-20'].length, 4, 'torek 20. 10.');
+  });
+
+  // ---------- uvoz seznama oseb ----------
+  test('Uvoz: CSV z glavo Soba,Priimek in ime', () => {
+    const r = Csv.parsePersons('﻿Soba,Priimek in ime\r\n202,NOVAK JANEZ\r\n\r\n207,KRANJC ROZA  MARIJA\r\n');
+    eq(r.persons.length, 2);
+    eq(r.persons[0].room, '202');
+    eq(r.persons[0].name, 'NOVAK JANEZ');
+    eq(r.persons[1].name, 'KRANJC ROZA MARIJA', 'odvečni presledki');
+    eq(r.bad.length, 0);
+  });
+
+  test('Uvoz: tabulatorji (Excel), podpičja, narekovaji, stolpci po glavi', () => {
+    eq(Csv.parsePersons('Ime\tSoba\nNovak Janez\t12').persons[0].room, '12', 'glava določa vrstni red');
+    eq(Csv.parsePersons('3;Horvat Ana').persons[0].name, 'Horvat Ana', 'podpičje, brez glave');
+    eq(Csv.parsePersons('"5","Zupan, Marko"').persons[0].name, 'Zupan, Marko', 'vejica v narekovajih');
+    eq(Csv.parsePersons('Samo Ime').persons[0].room, '', 'en stolpec = ime');
+    const r = Csv.parsePersons('Soba,Ime,Opomba\n4,,x\n5,Kos Eva,voziček');
+    eq(r.bad.length, 1, 'vrstica brez imena');
+    eq(r.persons[0].note, 'voziček');
   });
 
   // ---------- izpis ----------

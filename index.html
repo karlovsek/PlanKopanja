@@ -66,8 +66,10 @@
       <div class="controls">
         <label class="inline">Hodnik <select id="persons-corridor" class="corridor-select"></select></label>
         <button type="button" id="btn-new-person" class="primary">+ Nova oseba</button>
+        <button type="button" id="btn-import-persons">Uvozi seznam</button>
       </div>
       <p id="persons-empty" class="hint" hidden>Najprej dodajte hodnik.</p>
+      <p id="persons-status" class="status" hidden></p>
       <table class="list">
         <thead>
           <tr><th>Ime</th><th>Soba</th><th>Interval</th><th>Dovoljeni dnevi</th><th>Aktivna</th><th>Opomba</th><th></th></tr>
@@ -96,6 +98,26 @@
         <div class="buttons">
           <button type="submit" class="primary">Shrani</button>
           <button type="submit" value="next" class="save-next">Shrani in dodaj novo</button>
+          <button type="button" class="cancel">Prekliči</button>
+        </div>
+      </form>
+      </dialog>
+
+      <dialog id="import-dialog" class="modal">
+      <form id="import-form" class="card">
+        <div class="modal-head">
+          <h3 id="import-title">Uvoz oseb</h3>
+          <button type="button" class="modal-close" title="Zapri" aria-label="Zapri">×</button>
+        </div>
+        <label>Prilepite seznam <small>(vsaka oseba v svoji vrstici; npr. iz Excela ali v obliki
+          <code>Soba,Priimek in ime</code>; prva vrstica je lahko glava)</small>
+          <textarea name="text" rows="12" required placeholder="Soba,Priimek in ime&#10;202,NOVAK JANEZ&#10;203,KRANJC MARIJA"></textarea>
+        </label>
+        <p class="hint" id="import-preview"></p>
+        <p class="hint">Uvožene osebe dobijo privzete nastavitve (vsakih 10 dni, vsi dnevi, aktivne) –
+          po potrebi jih uredite v tabeli.</p>
+        <div class="buttons">
+          <button type="submit" class="primary">Uvozi</button>
           <button type="button" class="cancel">Prekliči</button>
         </div>
       </form>
@@ -145,6 +167,7 @@
   <script src="js/holidays.js"></script>
   <script src="js/scheduler.js"></script>
   <script src="js/storage.js"></script>
+  <script src="js/csv.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

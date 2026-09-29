@@ -16,6 +16,8 @@ Podatki se shranjujejo v brskalnik (`localStorage`) – **redno izvozite varnost
 2. **Osebe** – izberite hodnik in z gumbom **+ Nova oseba** dodajte osebe: soba, opomba, na koliko dni se kopa (privzeto 10) in
    dovoljeni dnevi v tednu (nič izbranega = vsi). Pri osebi, ki se kopa samo en dan v tednu (npr. samo ob torkih),
    se interval samodejno predlaga na 7 dni. **Shrani in dodaj novo** shrani osebo in pusti okno odprto za naslednji vnos.
+   **Uvozi seznam** doda več oseb naenkrat: prilepite vrstice `soba,ime` (npr. iz Excela ali CSV z glavo
+   `Soba,Priimek in ime`; ločilo je lahko vejica, podpičje ali tabulator). Osebe, ki na hodniku že obstajajo, se preskočijo.
 3. **Razpored** – izberite hodnik in mesec ter kliknite **Sestavi**.
    - Ročni popravki: klik na ime ga izbere, klik na drug dan ga premakne; `×` odstrani; `+` doda osebo.
    - `✎` na dnevu nastavi izjemo (največ oseb ta dan); »Privzeto« izjemo odstrani. Dnevi z izjemo imajo črtkan rob.
@@ -49,4 +51,5 @@ ali odprite `tests/scheduler.test.html` v brskalniku.
 - `js/holidays.js` – slovenski dela prosti dnevi (vključno z veliko nočjo)
 - `js/scheduler.js` – algoritem razporejanja in analiza opozoril (brez DOM)
 - `js/storage.js` – localStorage, izvoz/uvoz JSON
+- `js/csv.js` – razčlenjevanje prilepljenega seznama oseb
 - `js/app.js` – uporabniški vmesnik

@@ -4,6 +4,7 @@
 
   const S = window.KSScheduler;
   const Store = window.KSStorage;
+  const Csv = window.KSCsv;
 
   const WD_ORDER = [1, 2, 3, 4, 5, 6, 0];
   const WD_SHORT = ['Ned', 'Pon', 'Tor', 'Sre', 'Čet', 'Pet', 'Sob'];
@@ -234,6 +235,8 @@
   function renderPersons() {
     const cid = currentCorridorId();
     $('#persons-empty').hidden = !!cid;
+    $('#persons-status').hidden = true;
+    $('#btn-import-persons').disabled = !cid;
     $('#btn-new-person').disabled = !cid;
     const tbody = $('#person-rows');
     tbody.innerHTML = '';
@@ -332,6 +335,58 @@
     }
   });
   $('#btn-new-person').addEventListener('click', () => openPersonDialog());
+
+  // ---------- UVOZ OSEB (prilepljen seznam) ----------
+  const importForm = $('#import-form');
+  const importDialog = $('#import-dialog');
+
+  // Osebe iz prilepljenega besedila; tiste, ki na hodniku že obstajajo (enako ime in soba), se izpustijo.
+  function importCandidates() {
+    const res = Csv.parsePersons(importForm.text.value);
+    const key = p => (p.name + '|' + (p.room || '')).toLocaleLowerCase('sl');
+    const seen = new Set(personsOf(currentCorridorId()).map(key));
+    const fresh = [];
+    let dup = 0;
+    res.persons.forEach(p => {
+      if (seen.has(key(p))) dup++;
+      else { seen.add(key(p)); fresh.push(p); }
+    });
+    return { fresh, dup, bad: res.bad };
+  }
+
+  function updateImportPreview() {
+    const { fresh, dup, bad } = importCandidates();
+    const parts = ['Novih oseb: ' + fresh.length];
+    if (dup) parts.push('že obstaja ali podvojeno (preskočeno): ' + dup);
+    if (bad.length) parts.push('neveljavne vrstice: ' + bad.join(' | '));
+    $('#import-preview').textContent = importForm.text.value.trim() ? parts.join(' · ') : '';
+  }
+
+  $('#btn-import-persons').addEventListener('click', () => {
+    const c = corridorById(currentCorridorId());
+    if (!c) return;
+    importForm.reset();
+    updateImportPreview();
+    $('#import-title').textContent = 'Uvoz oseb – hodnik ' + c.name;
+    importDialog.showModal();
+    importForm.text.focus();
+  });
+  importForm.text.addEventListener('input', updateImportPreview);
+
+  importForm.addEventListener('submit', e => {
+    e.preventDefault();
+    const cid = currentCorridorId();
+    const { fresh } = importCandidates();
+    if (!cid || !fresh.length) return;
+    fresh.forEach(p => state.persons.push({
+      id: newId(), corridorId: cid, name: p.name, room: p.room, note: p.note,
+      intervalDays: 10, allowedWeekdays: [], active: true
+    }));
+    save();
+    importDialog.close();
+    render();
+    showStatus($('#persons-status'), 'Uvoženih oseb: ' + fresh.length + '.', 'ok');
+  });
 
   // Prekliči in × zapreta okno (Escape ga zapre sam); obrazec se ponastavi ob naslednjem odprtju.
   $$('.modal .cancel, .modal .modal-close').forEach(b => b.addEventListener('click', () => b.closest('dialog').close()));

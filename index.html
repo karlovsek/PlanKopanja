@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="sl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kopalni seznam</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="no-print">
+    <h1>Kopalni seznam</h1>
+    <nav>
+      <button type="button" data-tab="corridors">Hodniki</button>
+      <button type="button" data-tab="persons">Osebe</button>
+      <button type="button" data-tab="schedule">Razpored</button>
+      <button type="button" data-tab="backup">Varnostna kopija</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- HODNIKI -->
+    <section id="tab-corridors" class="tab" hidden>
+      <h2>Hodniki</h2>
+      <div class="controls">
+        <button type="button" id="btn-new-corridor" class="primary">+ Nov hodnik</button>
+      </div>
+      <table class="list">
+        <thead>
+          <tr><th>Ime</th><th>Pon–pet</th><th>Sobota</th><th>Nedelja / praznik</th><th>Izjeme</th><th>Oseb</th><th></th></tr>
+        </thead>
+        <tbody id="corridor-rows"></tbody>
+      </table>
+
+      <dialog id="corridor-dialog" class="modal">
+      <form id="corridor-form" class="card">
+        <div class="modal-head">
+          <h3 id="corridor-form-title">Nov hodnik</h3>
+          <button type="button" class="modal-close" title="Zapri" aria-label="Zapri">×</button>
+        </div>
+        <input type="hidden" name="id">
+        <label>Ime hodnika <input name="name" required></label>
+        <fieldset>
+          <legend>Največ oseb na dan <small>(0 = ta dan se ne kopa)</small></legend>
+          <div class="capacity-row">
+            <label>Pon–pet <input name="capWeekday" type="number" min="0" value="3" required></label>
+            <label>Sobota <input name="capSaturday" type="number" min="0" value="1" required></label>
+            <label>Nedelja in praznik <input name="capSundayHoliday" type="number" min="0" value="0" required></label>
+          </div>
+        </fieldset>
+        <label>Izjeme po dnevih <small>(vsaka v svoji vrstici: datum = največ oseb, npr. <code>24.12.2026 = 0</code>;
+          izjeme lahko nastavite tudi v koledarju z gumbom ✎)</small>
+          <textarea name="dayOverrides" rows="3"></textarea>
+        </label>
+        <p class="form-error" hidden></p>
+        <div class="buttons">
+          <button type="submit" class="primary">Shrani</button>
+          <button type="button" class="cancel">Prekliči</button>
+        </div>
+      </form>
+      </dialog>
+    </section>
+
+    <!-- OSEBE -->
+    <section id="tab-persons" class="tab" hidden>
+      <h2>Osebe</h2>
+      <div class="controls">
+        <label class="inline">Hodnik <select id="persons-corridor" class="corridor-select"></select></label>
+        <button type="button" id="btn-new-person" class="primary">+ Nova oseba</button>
+      </div>
+      <p id="persons-empty" class="hint" hidden>Najprej dodajte hodnik.</p>
+      <table class="list">
+        <thead>
+          <tr><th>Ime</th><th>Soba</th><th>Interval</th><th>Dovoljeni dnevi</th><th>Aktivna</th><th>Opomba</th><th></th></tr>
+        </thead>
+        <tbody id="person-rows"></tbody>
+      </table>
+
+      <dialog id="person-dialog" class="modal">
+      <form id="person-form" class="card">
+        <div class="modal-head">
+          <h3 id="person-form-title">Nova oseba</h3>
+          <button type="button" class="modal-close" title="Zapri" aria-label="Zapri">×</button>
+        </div>
+        <p class="status ok" id="person-added" hidden></p>
+        <input type="hidden" name="id">
+        <label>Ime in priimek <input name="name" required></label>
+        <label>Soba <input name="room"></label>
+        <label>Kopanje vsakih (dni) <input name="intervalDays" type="number" min="1" value="10" required></label>
+        <fieldset>
+          <legend>Dovoljeni dnevi v tednu <small>(nič izbranega = vsi dnevi)</small></legend>
+          <div class="weekdays" data-name="allowedWeekdays"></div>
+          <p class="hint" id="interval-hint" hidden></p>
+        </fieldset>
+        <label class="check"><input type="checkbox" name="active" checked> Aktivna (vključena v razpored)</label>
+        <label>Opomba <input name="note"></label>
+        <div class="buttons">
+          <button type="submit" class="primary">Shrani</button>
+          <button type="submit" value="next" class="save-next">Shrani in dodaj novo</button>
+          <button type="button" class="cancel">Prekliči</button>
+        </div>
+      </form>
+      </dialog>
+    </section>
+
+    <!-- RAZPORED -->
+    <section id="tab-schedule" class="tab" hidden>
+      <div class="controls no-print">
+        <label class="inline">Hodnik <select id="schedule-corridor" class="corridor-select"></select></label>
+        <label class="inline">Mesec <input type="month" id="schedule-month"></label>
+        <button type="button" id="btn-build" class="primary">Sestavi</button>
+        <button type="button" id="btn-print">Natisni</button>
+        <button type="button" id="btn-clear-schedule">Počisti razpored</button>
+      </div>
+      <p id="schedule-status" class="status no-print" hidden></p>
+      <h2 id="schedule-title"></h2>
+      <p class="hint no-print">Klik na ime ga izbere, klik na drug dan ga premakne tja. × odstrani osebo, + doda osebo, ✎ nastavi izjemo (največ oseb) za posamezen dan.</p>
+      <div id="calendar"></div>
+      <div id="schedule-warnings" class="no-print"></div>
+      <div id="schedule-summary" class="no-print"></div>
+    </section>
+
+    <!-- VARNOSTNA KOPIJA -->
+    <section id="tab-backup" class="tab" hidden>
+      <h2>Varnostna kopija</h2>
+      <p>Podatki so shranjeni samo v tem brskalniku. Redno jih izvozite v datoteko, da jih ne izgubite
+        (npr. ob čiščenju brskalnika) ali da jih prenesete na drug računalnik.</p>
+      <p id="backup-info" class="hint"></p>
+      <div class="card">
+        <h3>Izvoz</h3>
+        <button type="button" id="btn-export" class="primary">Izvozi JSON</button>
+      </div>
+      <div class="card">
+        <h3>Uvoz</h3>
+        <p>Uvoz <strong>prepiše</strong> vse trenutne podatke.</p>
+        <input type="file" id="import-file" accept=".json,application/json">
+        <p id="import-status" class="status" hidden></p>
+      </div>
+      <div class="card danger">
+        <h3>Brisanje</h3>
+        <button type="button" id="btn-wipe">Izbriši vse podatke</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/holidays.js"></script>
+  <script src="js/scheduler.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

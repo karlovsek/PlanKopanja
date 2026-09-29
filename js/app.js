@@ -539,9 +539,10 @@
       ]);
       ids.forEach(id => {
         const p = byId[id];
-        const selected = selection && selection.date === d && selection.personId === id;
+        const samePerson = selection && selection.personId === id;
+        const selected = samePerson && selection.date === d;
         cell.appendChild(el('div', {
-          class: 'chip' + (selected ? ' selected' : '') + (!S.personAllows(p, d) || !info.valid ? ' bad' : ''),
+          class: 'chip' + (selected ? ' selected' : samePerson ? ' same-person' : '') + (!S.personAllows(p, d) || !info.valid ? ' bad' : ''),
           title: p.note || '',
           onclick: ev => { ev.stopPropagation(); onChipClick(d, id); }
         }, [

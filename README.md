@@ -21,7 +21,7 @@ Podatki se shranjujejo v brskalnik (`localStorage`) – **redno izvozite varnost
    Klik na glavo stolpca tabelo razvrsti (ponovni klik obrne vrstni red), polja pod glavo jo filtrirajo
    (iskanje ne loči velikih črk in šumnikov, npr. `zupancic` najde »ŽUPANČIČ«).
 3. **Razpored** – izberite hodnik in mesec ter kliknite **Sestavi**.
-   - Ročni popravki: klik na ime ga izbere, klik na drug dan ga premakne; `×` odstrani; `+` doda osebo.
+   - Ročni popravki: klik na ime ga izbere (obarvajo se tudi vsi ostali termini te osebe v mesecu), klik na drug dan ga premakne; `×` odstrani; `+` doda osebo.
    - `✎` na dnevu nastavi izjemo (največ oseb ta dan); »Privzeto« izjemo odstrani. Dnevi z izjemo imajo črtkan rob.
      Po spremembi izjem kliknite **Sestavi**, da se razpored ponovno sestavi.
    - Opombe oseb so ob imenu označene s številko, besedilo opomb je pod koledarjem (tudi na natisu).

@@ -159,6 +159,10 @@ tr.filters input, tr.filters select { width: 100%; min-width: 4rem; font-size: 0
 #schedule-warnings li.warn { color: var(--warn); }
 #schedule-warnings li.info { color: var(--muted); }
 #schedule-summary table { max-width: 900px; }
+.note-ref { font-size: 0.7em; font-weight: 700; color: var(--accent); margin-left: 1px; }
+.chip.selected .note-ref { color: #fff; }
+#schedule-notes ul.notes { list-style: none; padding: 0; columns: 3 16rem; column-gap: 1.5rem; font-size: 0.85rem; }
+#schedule-notes ul.notes li { break-inside: avoid; margin-bottom: 2px; }
 
 /* ---------- pojavna okna ---------- */
 .modal {
@@ -209,4 +213,10 @@ tr.filters input, tr.filters select { width: 100%; min-width: 4rem; font-size: 0
   .chip .x, .add-btn, .day select, .day-count, .edit-cap { display: none !important; }
   .day-note { color: #333; }
   .day.override { border-style: none solid solid none; border-color: #000; }
+  /* Z legendo opomb so celice nižje, da mesec s 6 tedni ostane na eni strani. */
+  #calendar.has-notes .day { min-height: 22mm; }
+  .note-ref { color: #000 !important; }
+  #schedule-notes { break-inside: avoid; }
+  #schedule-notes h3 { font-size: 10pt; margin: 3mm 0 1mm; }
+  #schedule-notes ul.notes { font-size: 8.5pt; columns: 3; }
 }

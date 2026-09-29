@@ -24,6 +24,7 @@ Podatki se shranjujejo v brskalnik (`localStorage`) – **redno izvozite varnost
    - Ročni popravki: klik na ime ga izbere, klik na drug dan ga premakne; `×` odstrani; `+` doda osebo.
    - `✎` na dnevu nastavi izjemo (največ oseb ta dan); »Privzeto« izjemo odstrani. Dnevi z izjemo imajo črtkan rob.
      Po spremembi izjem kliknite **Sestavi**, da se razpored ponovno sestavi.
+   - Opombe oseb so ob imenu označene s številko, besedilo opomb je pod koledarjem (tudi na natisu).
    - Pod koledarjem so opozorila (presežena kapaciteta, zamude, nedovoljeni dnevi …) in povzetek po osebah.
    - **Natisni** natisne koledar na list A4 (ležeče).
 4. **Varnostna kopija** – izvoz/uvoz vseh podatkov v datoteko JSON.

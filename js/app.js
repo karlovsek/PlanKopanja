@@ -490,6 +490,8 @@
     cal.innerHTML = '';
     $('#schedule-warnings').innerHTML = '';
     $('#schedule-summary').innerHTML = '';
+    $('#schedule-notes').innerHTML = '';
+    cal.classList.remove('has-notes');
     if (!c) {
       $('#schedule-title').textContent = '';
       setStatus('Najprej dodajte hodnik in osebe.', 'warn');
@@ -500,6 +502,12 @@
     const persons = personsOf(cid);
     const byId = {};
     persons.forEach(p => { byId[p.id] = p; });
+    // Osebe z opombo, ki so ta mesec v razporedu, dobijo zaporedno številko (po imenu).
+    const scheduled = new Set(sched ? Object.values(sched.days).flat() : []);
+    const noted = persons.filter(p => scheduled.has(p.id) && (p.note || '').trim());
+    const noteNo = {};
+    noted.forEach((p, i) => { noteNo[p.id] = i + 1; });
+    cal.classList.toggle('has-notes', noted.length > 0);
 
     $('#schedule-title').textContent = `Kopalni seznam – ${c.name} – ${MONTHS[m - 1]} ${y}`;
     document.title = $('#schedule-title').textContent;
@@ -537,7 +545,11 @@
           title: p.note || '',
           onclick: ev => { ev.stopPropagation(); onChipClick(d, id); }
         }, [
-          el('span', {}, [p.name, p.room ? el('span', { class: 'room', text: ' (' + p.room + ')' }) : null]),
+          el('span', {}, [
+            p.name,
+            p.room ? el('span', { class: 'room', text: ' (' + p.room + ')' }) : null,
+            noteNo[id] ? el('sup', { class: 'note-ref', text: String(noteNo[id]) }) : null
+          ]),
           el('button', {
             type: 'button', class: 'x', title: 'Odstrani', text: '×',
             onclick: ev => { ev.stopPropagation(); removePerson(d, id); }
@@ -565,6 +577,7 @@
     }
 
     renderWarnings(S.analyzeSchedule(c, state.persons, y, m, sched.days, state.schedules), sched);
+    renderNotes(noted);
     renderSummary(persons, sched.days);
   }
 
@@ -615,6 +628,17 @@
     box.appendChild(el('ul', {}, warnings.slice()
       .sort((a, b) => order[a.level] - order[b.level])
       .map(w => el('li', { class: w.level, text: w.text }))));
+  }
+
+  // Legenda opomb pod koledarjem (natisne se skupaj z njim).
+  function renderNotes(noted) {
+    if (!noted.length) return;
+    const box = $('#schedule-notes');
+    box.appendChild(el('h3', { text: 'Opombe' }));
+    box.appendChild(el('ul', { class: 'notes' }, noted.map((p, i) => el('li', {}, [
+      el('sup', { class: 'note-ref', text: String(i + 1) }),
+      ' ' + p.name + (p.room ? ' (' + p.room + ')' : '') + ' – ' + p.note.trim()
+    ]))));
   }
 
   function renderSummary(persons, days) {

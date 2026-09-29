@@ -1,4 +1,4 @@
-/* Uporabniški vmesnik Kopalnega seznama. */
+/* Uporabniški vmesnik Plana kopanja. */
 (function () {
   'use strict';
 
@@ -509,7 +509,7 @@
     noted.forEach((p, i) => { noteNo[p.id] = i + 1; });
     cal.classList.toggle('has-notes', noted.length > 0);
 
-    $('#schedule-title').textContent = `Kopalni seznam – ${c.name} – ${MONTHS[m - 1]} ${y}`;
+    $('#schedule-title').textContent = `Plan kopanja – ${c.name} – ${MONTHS[m - 1]} ${y}`;
     document.title = $('#schedule-title').textContent;
 
     WD_ORDER.forEach(w => cal.appendChild(el('div', { class: 'cal-head', text: WD_SHORT[w] })));

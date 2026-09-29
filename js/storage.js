@@ -68,7 +68,7 @@
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'kopalni-seznam-' + new Date().toISOString().slice(0, 10) + '.json';
+    a.download = 'plan-kopanja-' + new Date().toISOString().slice(0, 10) + '.json';
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -87,7 +87,7 @@
           return;
         }
         if (!data || !Array.isArray(data.corridors) || !Array.isArray(data.persons)) {
-          reject(new Error('Datoteka ne vsebuje podatkov Kopalnega seznama.'));
+          reject(new Error('Datoteka ne vsebuje podatkov Plana kopanja.'));
           return;
         }
         resolve(normalize(data));

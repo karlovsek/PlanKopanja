@@ -1,4 +1,4 @@
-# Kopalni seznam
+# Plan kopanja
 
 Preprosta spletna aplikacija za vodenje oseb po hodnikih in samodejno sestavo mesečnega razporeda kopanja.
 

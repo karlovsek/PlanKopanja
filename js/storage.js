@@ -32,12 +32,19 @@
     return out;
   }
 
+  // Besedilna polja oseb so vedno nizi (JSON, pripravljen zunaj aplikacije, ima lahko npr. "room": 202).
+  function normalizePerson(p) {
+    const out = Object.assign({}, p);
+    ['name', 'room', 'note'].forEach(k => { if (out[k] != null && typeof out[k] !== 'string') out[k] = String(out[k]); });
+    return out;
+  }
+
   function normalize(s) {
     if (!s || typeof s !== 'object') return empty();
     return {
       version: 1,
       corridors: Array.isArray(s.corridors) ? s.corridors.map(normalizeCorridor) : [],
-      persons: Array.isArray(s.persons) ? s.persons : [],
+      persons: Array.isArray(s.persons) ? s.persons.map(normalizePerson) : [],
       schedules: (s.schedules && typeof s.schedules === 'object') ? s.schedules : {},
       ui: (s.ui && typeof s.ui === 'object') ? s.ui : {}
     };

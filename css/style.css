@@ -98,11 +98,13 @@ table.list th { background: #f0f2f4; font-weight: 600; font-size: 0.9rem; }
 table.list td.actions { white-space: nowrap; text-align: right; }
 table.list tr.inactive td { color: var(--muted); }
 table.list .empty td { color: var(--muted); text-align: center; }
-th button.sort { border: 0; background: none; font: inherit; font-weight: 600; padding: 0; cursor: pointer; color: inherit; }
-th button.sort::after { content: ' ↕'; color: var(--muted); opacity: 0.5; }
-th[aria-sort=ascending] button.sort::after { content: ' ▲'; color: inherit; opacity: 1; }
-th[aria-sort=descending] button.sort::after { content: ' ▼'; color: inherit; opacity: 1; }
-table.list tr.filters th { font-weight: normal; padding-top: 0.25rem; padding-bottom: 0.35rem; }
+th button.sort { border: 0; background: none; padding: 0; color: inherit; }
+/* Puščice so le okras (smer pove aria-sort); »/ ''« jih izpusti iz imena gumba, starejši brskalniki vzamejo prvo vrednost. */
+th button.sort::after { content: ' ↕'; content: ' ↕' / ''; color: var(--muted); opacity: 0.5; }
+th[aria-sort=ascending] button.sort::after { content: ' ▲'; content: ' ▲' / ''; color: inherit; opacity: 1; }
+th[aria-sort=descending] button.sort::after { content: ' ▼'; content: ' ▼' / ''; color: inherit; opacity: 1; }
+/* Vrstica s filtri so navadne celice (ne glave stolpcev), videti pa je kot glava. */
+table.list tr.filters td { background: #f0f2f4; padding-top: 0.25rem; padding-bottom: 0.35rem; }
 tr.filters input, tr.filters select { width: 100%; min-width: 4rem; font-size: 0.85rem; padding: 0.15rem 0.3rem; }
 
 .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
@@ -146,11 +148,12 @@ tr.filters input, tr.filters select { width: 100%; min-width: 4rem; font-size: 0
   user-select: none;
 }
 .chip .room { color: var(--muted); font-size: 0.78rem; }
-.chip.selected { background: var(--accent); color: #fff; border-color: var(--accent); }
-.chip.selected .room { color: #dce8fc; }
 /* Ostali termini izbrane osebe v mesecu. */
 .chip.same-person { background: #b9d0f7; border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); font-weight: 600; }
 .chip.bad { background: #fde8e8; border-color: #f0b4b4; }
+/* Izbran čip je za .bad, da bel tekst ostane berljiv tudi na nedovoljen dan. */
+.chip.selected { background: var(--accent); color: #fff; border-color: var(--accent); }
+.chip.selected .room { color: #dce8fc; }
 .chip .x { border: 0; background: transparent; padding: 0 0.2rem; font-size: 1rem; line-height: 1; color: inherit; opacity: 0.6; }
 .chip .x:hover { opacity: 1; }
 .add-btn { align-self: flex-start; margin-top: auto; padding: 0 0.45rem; font-size: 0.9rem; color: var(--muted); }
@@ -161,7 +164,8 @@ tr.filters input, tr.filters select { width: 100%; min-width: 4rem; font-size: 0
 #schedule-warnings li.warn { color: var(--warn); }
 #schedule-warnings li.info { color: var(--muted); }
 #schedule-summary table { max-width: 900px; }
-.note-ref { font-size: 0.7em; font-weight: 700; color: var(--accent); margin-left: 1px; }
+/* line-height: 0 – nadpisana številka ne poviša vrstice (čipi ostanejo enako visoki). */
+.note-ref { font-size: 0.7em; font-weight: 700; color: var(--accent); margin-left: 1px; line-height: 0; }
 .chip.selected .note-ref { color: #fff; }
 #schedule-notes ul.notes { list-style: none; padding: 0; columns: 3 16rem; column-gap: 1.5rem; font-size: 0.85rem; }
 #schedule-notes ul.notes li { break-inside: avoid; margin-bottom: 2px; }
@@ -210,15 +214,16 @@ tr.filters input, tr.filters select { width: 100%; min-width: 4rem; font-size: 0
   .day { border: 0; border-right: 1px solid #000; border-bottom: 1px solid #000; border-radius: 0; min-height: 27mm; padding: 1mm 1.5mm; break-inside: avoid; box-shadow: none; }
   .day.blank { border-right: 1px solid #000; border-bottom: 1px solid #000; }
   .day.excluded { background: #e6e6e6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .chip { background: none !important; border: 0; box-shadow: none; padding: 0; font-size: 9.5pt; color: #000 !important; }
+  .chip { background: none !important; border: 0; padding: 0; font-size: 9.5pt; color: #000 !important; }
   .chip .room { color: #333 !important; }
   .chip .x, .add-btn, .day select, .day-count, .edit-cap { display: none !important; }
   .day-note { color: #333; }
   .day.override { border-style: none solid solid none; border-color: #000; }
-  /* Z legendo opomb so celice nižje, da mesec s 6 tedni ostane na eni strani. */
+  /* Z legendo opomb so celice nižje in pisava čipov manjša, da mesec s 6 tedni ostane na eni strani. */
   #calendar.has-notes .day { min-height: 22mm; }
+  #calendar.has-notes .chip { font-size: 9pt; }
   .note-ref { color: #000 !important; }
   #schedule-notes { break-inside: avoid; }
-  #schedule-notes h3 { font-size: 10pt; margin: 3mm 0 1mm; }
-  #schedule-notes ul.notes { font-size: 8.5pt; columns: 3; }
+  #schedule-notes h3 { font-size: 10pt; margin: 2mm 0 0.5mm; }
+  #schedule-notes ul.notes { font-size: 8.5pt; columns: 3; margin: 0; line-height: 1.25; }
 }

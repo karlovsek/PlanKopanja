@@ -15,7 +15,6 @@
   let selection = null; // { date, personId } – izbran čip za premik
   let editingDay = null; // datum, za katerega je odprto urejanje izjeme
   let personSort = { key: 'name', dir: 1 }; // razvrščanje tabele oseb (dir: 1 naraščajoče, -1 padajoče)
-  let personFilter = {}; // { name, room, interval, weekdays, active } – filtri tabele oseb
 
   // ---------- pomožne ----------
   const $ = (sel, root) => (root || document).querySelector(sel);
@@ -45,10 +44,13 @@
   }
 
   const byName = S.byName;
+  const str = v => (v == null ? '' : String(v));
 
   function weekdayList(arr) {
     return WD_ORDER.filter(w => (arr || []).includes(w)).map(w => WD_SHORT[w]).join(', ');
   }
+
+  function personLabel(p) { return p.name + (p.room ? ' (' + p.room + ')' : ''); }
 
   function fmtDate(iso) { return S.shortDate(iso) + ' ' + iso.slice(0, 4); }
 
@@ -127,7 +129,7 @@
     reset();
     if (item) fill(item);
     dlg.showModal();
-    $('form', dlg).name.focus();
+    $('[name]:not([type=hidden])', dlg).focus();
   }
 
   // ---------- HODNIKI ----------
@@ -234,58 +236,74 @@
     if (currentCorridorId()) openDialog(personDialog, resetPersonForm, editPerson, p);
   }
 
-  // »Župančič« → »zupancic« (iskanje brez velikih črk in šumnikov)
-  function fold(s) { return (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
-
-  function matchesPersonFilter(p) {
-    const f = personFilter;
-    if (f.name && !fold(p.name).includes(fold(f.name))) return false;
-    if (f.room && !fold(p.room).includes(fold(f.room))) return false;
-    if (f.interval && S.intervalOf(p) !== +f.interval) return false;
-    const a = p.allowedWeekdays || [];
-    if (f.weekdays === 'limited' && !a.length) return false;
-    if (f.weekdays && f.weekdays !== 'limited' && a.length && !a.includes(+f.weekdays)) return false;
-    if (f.active && (p.active !== false ? 'da' : 'ne') !== f.active) return false;
-    return true;
+  // »Župančič« → »zupancic«, »Đurić« → »duric« (iskanje brez velikih črk, šumnikov in odvečnih presledkov)
+  function fold(s) {
+    return str(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/đ/g, 'd').replace(/\s+/g, ' ');
   }
 
-  function wdKey(p) { return WD_ORDER.map((w, i) => (p.allowedWeekdays || []).includes(w) ? i : -1).filter(i => i >= 0); }
+  // Filtri tabele oseb, prebrani iz polj pod glavo (tudi vrednosti, ki jih brskalnik obnovi ob ponovnem nalaganju).
+  function personFilterValues() {
+    const f = {};
+    $$('#tab-persons [data-filter]').forEach(inp => { f[inp.dataset.filter] = inp.value.trim(); });
+    return f;
+  }
 
-  const personSortValue = {
-    name: (a, b) => (a.name || '').localeCompare(b.name || '', 'sl'),
-    note: (a, b) => (a.note || '').localeCompare(b.note || '', 'sl'),
-    room: (a, b) => (a.room || '').localeCompare(b.room || '', 'sl', { numeric: true }),
+  function personMatcher(f) {
+    const name = fold(f.name);
+    const room = fold(f.room);
+    const interval = parseInt(f.interval, 10); // »10 dni« → 10
+    return p => {
+      if (name && !fold(p.name).includes(name)) return false;
+      if (room && !fold(p.room).includes(room)) return false;
+      if (f.interval && S.intervalOf(p) !== interval) return false;
+      const a = p.allowedWeekdays || [];
+      if (f.weekdays === 'limited') { if (!a.length) return false; }
+      else if (f.weekdays && a.length && !a.includes(+f.weekdays)) return false;
+      if (f.active && (p.active !== false ? 'da' : 'ne') !== f.active) return false;
+      return true;
+    };
+  }
+
+  // Dovoljeni dnevi kot niz položajev v tednu (pon = 0 … ned = 6), npr. »02« = pon, sre; prazen niz = vsi dnevi.
+  function wdKey(p) { return WD_ORDER.map((w, i) => ((p.allowedWeekdays || []).includes(w) ? i : '')).join(''); }
+
+  const roomCollator = new Intl.Collator('sl', { numeric: true });
+
+  // Primerjave za razvrščanje tabele oseb po stolpcih.
+  const personCompare = {
+    name: byName,
+    note: (a, b) => str(a.note).localeCompare(str(b.note), 'sl'),
+    room: (a, b) => roomCollator.compare(str(a.room), str(b.room)),
     interval: (a, b) => S.intervalOf(a) - S.intervalOf(b),
-    weekdays: (a, b) => {
-      const x = wdKey(a), y = wdKey(b);
-      for (let i = 0; i < Math.min(x.length, y.length); i++) if (x[i] !== y[i]) return x[i] - y[i];
-      return x.length - y.length;
-    },
+    weekdays: (a, b) => wdKey(a).localeCompare(wdKey(b)),
     active: (a, b) => (a.active === false) - (b.active === false)
   };
 
   function comparePersons(a, b) {
-    if (personSort.key === 'room' && !a.room !== !b.room) return !a.room - !b.room; // brez sobe vedno na konec
-    return personSort.dir * personSortValue[personSort.key](a, b) || byName(a, b);
+    const k = personSort.key;
+    // Osebe brez sobe oz. opombe so vedno na koncu (ne glede na smer).
+    if ((k === 'room' || k === 'note') && !a[k] !== !b[k]) return a[k] ? -1 : 1;
+    return personSort.dir * personCompare[k](a, b) || byName(a, b);
   }
 
   function renderPersons() {
     const cid = currentCorridorId();
     $('#persons-empty').hidden = !!cid;
     $('#persons-status').hidden = true;
+    $('#persons-count').hidden = true;
     $('#btn-import-persons').disabled = !cid;
     $('#btn-new-person').disabled = !cid;
     const tbody = $('#person-rows');
     tbody.innerHTML = '';
     if (!cid) return;
-    const all = personsOf(cid);
-    const list = all.filter(matchesPersonFilter).sort(comparePersons);
+    const f = personFilterValues();
+    const all = state.persons.filter(p => p.corridorId === cid);
+    const list = all.filter(personMatcher(f)).sort(comparePersons);
     $$('#tab-persons button.sort').forEach(b => {
       if (b.dataset.sort === personSort.key) b.parentNode.setAttribute('aria-sort', personSort.dir > 0 ? 'ascending' : 'descending');
       else b.parentNode.removeAttribute('aria-sort');
     });
-    const filtered = Object.values(personFilter).some(v => v);
-    $('#persons-count').hidden = !filtered;
+    $('#persons-count').hidden = !Object.values(f).some(v => v);
     $('#persons-count span').textContent = `Prikazanih ${list.length} od ${all.length}`;
     if (!list.length) {
       tbody.appendChild(el('tr', { class: 'empty' }, [el('td', {
@@ -314,15 +332,12 @@
     renderPersons();
   }));
 
-  $$('#tab-persons [data-filter]').forEach(inp => inp.addEventListener('input', () => {
-    personFilter[inp.dataset.filter] = inp.value.trim();
-    renderPersons();
-  }));
+  $$('#tab-persons [data-filter]').forEach(inp => inp.addEventListener('input', renderPersons));
 
   $('#btn-clear-filter').addEventListener('click', () => {
     $$('#tab-persons [data-filter]').forEach(inp => { inp.value = ''; });
-    personFilter = {};
     renderPersons();
+    $('#tab-persons [data-filter]').focus(); // gumb se je skril – fokus ostane v tabeli
   });
 
   function resetPersonForm() {
@@ -404,23 +419,37 @@
   const importForm = $('#import-form');
   const importDialog = $('#import-dialog');
 
-  // Osebe iz prilepljenega besedila; tiste, ki na hodniku že obstajajo (enako ime in soba), se izpustijo.
+  // Osebe iz prilepljenega besedila; tiste, ki na hodniku že obstajajo (enako ime in soba; če soba pri eni od
+  // obeh ni vpisana, zadošča ime), se izpustijo.
   function importCandidates() {
     const res = Csv.parsePersons(importForm.text.value);
-    const key = p => (p.name + '|' + (p.room || '')).toLocaleLowerCase('sl');
-    const seen = new Set(personsOf(currentCorridorId()).map(key));
+    // Primerjava ne loči velikih črk, presledkov (tudi nedeljivih) in zapisa šumnikov v Unicode (NFC/NFD).
+    const norm = s => str(s).normalize('NFC').replace(/\s+/g, ' ').trim().toLocaleLowerCase('sl');
+    const rooms = new Map(); // ime → sobe oseb s tem imenom ('' = brez sobe)
+    const add = p => {
+      const n = norm(p.name);
+      if (!rooms.has(n)) rooms.set(n, new Set());
+      rooms.get(n).add(norm(p.room));
+    };
+    const exists = p => {
+      const r = rooms.get(norm(p.name));
+      const room = norm(p.room);
+      return !!r && (!room || r.has('') || r.has(room));
+    };
+    personsOf(currentCorridorId()).forEach(add);
     const fresh = [];
     let dup = 0;
     res.persons.forEach(p => {
-      if (seen.has(key(p))) dup++;
-      else { seen.add(key(p)); fresh.push(p); }
+      if (exists(p)) dup++;
+      else { add(p); fresh.push(p); }
     });
     return { fresh, dup, bad: res.bad };
   }
 
   function updateImportPreview() {
     const { fresh, dup, bad } = importCandidates();
-    const parts = ['Novih oseb: ' + fresh.length];
+    // Prva nova oseba kot zgled, da se vidi, ali sta ime in soba prav prepoznana.
+    const parts = ['Novih oseb: ' + fresh.length + (fresh.length ? ', npr. »' + personLabel(fresh[0]) + '«' : '')];
     if (dup) parts.push('že obstaja ali podvojeno (preskočeno): ' + dup);
     if (bad.length) parts.push('neveljavne vrstice: ' + bad.join(' | '));
     $('#import-preview').textContent = importForm.text.value.trim() ? parts.join(' · ') : '';
@@ -428,12 +457,11 @@
 
   $('#btn-import-persons').addEventListener('click', () => {
     const c = corridorById(currentCorridorId());
-    if (!c) return;
-    importForm.reset();
-    updateImportPreview();
-    $('#import-title').textContent = 'Uvoz oseb – hodnik ' + c.name;
-    importDialog.showModal();
-    importForm.text.focus();
+    if (c) openDialog(importDialog, () => {
+      importForm.reset();
+      updateImportPreview();
+      $('#import-title').textContent = 'Uvoz oseb – hodnik ' + c.name;
+    });
   });
   importForm.text.addEventListener('input', updateImportPreview);
 
@@ -504,7 +532,7 @@
     persons.forEach(p => { byId[p.id] = p; });
     // Osebe z opombo, ki so ta mesec v razporedu, dobijo zaporedno številko (po imenu).
     const scheduled = new Set(sched ? Object.values(sched.days).flat() : []);
-    const noted = persons.filter(p => scheduled.has(p.id) && (p.note || '').trim());
+    const noted = persons.filter(p => scheduled.has(p.id) && noteText(p));
     const noteNo = {};
     noted.forEach((p, i) => { noteNo[p.id] = i + 1; });
     cal.classList.toggle('has-notes', noted.length > 0);
@@ -539,17 +567,19 @@
       ]);
       ids.forEach(id => {
         const p = byId[id];
-        const samePerson = selection && selection.personId === id;
-        const selected = samePerson && selection.date === d;
+        const chipCls = ['chip'];
+        // Izbran čip; ostali termini iste osebe v mesecu so označeni drugače.
+        if (selection && selection.personId === id) chipCls.push(selection.date === d ? 'selected' : 'same-person');
+        if (!S.personAllows(p, d) || !info.valid) chipCls.push('bad');
         cell.appendChild(el('div', {
-          class: 'chip' + (selected ? ' selected' : samePerson ? ' same-person' : '') + (!S.personAllows(p, d) || !info.valid ? ' bad' : ''),
+          class: chipCls.join(' '),
           title: p.note || '',
           onclick: ev => { ev.stopPropagation(); onChipClick(d, id); }
         }, [
           el('span', {}, [
             p.name,
             p.room ? el('span', { class: 'room', text: ' (' + p.room + ')' }) : null,
-            noteNo[id] ? el('sup', { class: 'note-ref', text: String(noteNo[id]) }) : null
+            noteNo[id] ? noteRef(noteNo[id]) : null
           ]),
           el('button', {
             type: 'button', class: 'x', title: 'Odstrani', text: '×',
@@ -578,7 +608,7 @@
     }
 
     renderWarnings(S.analyzeSchedule(c, state.persons, y, m, sched.days, state.schedules), sched);
-    renderNotes(noted);
+    renderNotes(noted, noteNo);
     renderSummary(persons, sched.days);
   }
 
@@ -631,14 +661,16 @@
       .map(w => el('li', { class: w.level, text: w.text }))));
   }
 
-  // Legenda opomb pod koledarjem (natisne se skupaj z njim).
-  function renderNotes(noted) {
+  function noteText(p) { return str(p.note).trim(); }
+  function noteRef(n) { return el('sup', { class: 'note-ref', text: String(n) }); }
+
+  // Legenda opomb pod koledarjem (natisne se skupaj z njim); številke so iste kot ob imenih v koledarju.
+  function renderNotes(noted, noteNo) {
     if (!noted.length) return;
     const box = $('#schedule-notes');
     box.appendChild(el('h3', { text: 'Opombe' }));
-    box.appendChild(el('ul', { class: 'notes' }, noted.map((p, i) => el('li', {}, [
-      el('sup', { class: 'note-ref', text: String(i + 1) }),
-      ' ' + p.name + (p.room ? ' (' + p.room + ')' : '') + ' – ' + p.note.trim()
+    box.appendChild(el('ul', { class: 'notes' }, noted.map(p => el('li', {}, [
+      noteRef(noteNo[p.id]), ' ' + personLabel(p) + ' – ' + noteText(p)
     ]))));
   }
 
@@ -715,7 +747,7 @@
     const sel = el('select', { onclick: ev => ev.stopPropagation() }, [el('option', { value: '', text: '— dodaj osebo —' })]
       .concat(options.map(p => el('option', {
         value: p.id,
-        text: p.name + (p.room ? ' (' + p.room + ')' : '') + (p.active === false ? ' – neaktivna' : '')
+        text: personLabel(p) + (p.active === false ? ' – neaktivna' : '')
       }))));
     sel.addEventListener('change', () => {
       if (!sel.value) return;
@@ -757,11 +789,11 @@
     renderSchedule();
   });
 
-  $('#btn-print').addEventListener('click', () => {
-    selection = null;
-    renderSchedule();
-    window.print();
+  // Izbran čip (in z njim označeni termini ter cilji premika) se ne natisne – tudi pri tiskanju s Ctrl+P.
+  window.addEventListener('beforeprint', () => {
+    if (selection) { selection = null; renderSchedule(); }
   });
+  $('#btn-print').addEventListener('click', () => window.print());
 
   $('#schedule-month').addEventListener('change', e => {
     if (!e.target.value) return;
@@ -822,6 +854,9 @@
 
   // ---------- zagon ----------
   $$('.weekdays').forEach(renderWeekdayBoxes);
+  // Posamezni dnevi v filtru »Dovoljeni dnevi« (za »vsi« in »Samo omejeni«, ki sta v index.html).
+  const wdFilter = $('#tab-persons [data-filter=weekdays]');
+  WD_ORDER.forEach(w => wdFilter.appendChild(el('option', { value: w, text: WD_SHORT[w] })));
   $$('nav button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
   showTab(state.ui.tab || (state.corridors.length ? 'schedule' : 'corridors'));
 })();

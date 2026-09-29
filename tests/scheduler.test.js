@@ -152,6 +152,38 @@
     eq(r.persons[0].note, 'voziček');
   });
 
+  test('Uvoz: ločilo velja za ves seznam (podpičje v opombi CSV z vejicami)', () => {
+    const r = Csv.parsePersons('Soba,Ime,Opomba\n5,Kos Eva,voziček; pomoč\n6,"Zupan; Marko",');
+    eq(r.persons[0].name, 'Kos Eva');
+    eq(r.persons[0].room, '5');
+    eq(r.persons[0].note, 'voziček; pomoč');
+    eq(r.persons[1].name, 'Zupan; Marko', 'podpičje v narekovajih');
+    eq(Csv.parsePersons('Priimek in ime\nNovak, Janez').persons[0].name, 'Novak, Janez', 'glava z enim stolpcem');
+  });
+
+  test('Uvoz: ločena stolpca Priimek in Ime, glava pod naslovom, »Št. sobe«', () => {
+    const r = Csv.parsePersons('Soba;Priimek;Ime\n202;Novak;Janez\n202;Novak;Marija');
+    eq(r.persons.map(p => p.name).join('|'), 'Novak Janez|Novak Marija');
+    const t = Csv.parsePersons('Seznam stanovalcev\t\nIme in priimek\tŠt. sobe\nNOVAK JANEZ\t202');
+    eq(t.persons.length, 1, 'naslov ni oseba');
+    eq(t.persons[0].name, 'NOVAK JANEZ');
+    eq(t.persons[0].room, '202');
+    eq(t.bad.length, 1, 'naslov med neveljavnimi vrsticami');
+  });
+
+  test('Uvoz: celica z več vrsticami (Alt+Enter v Excelu)', () => {
+    const r = Csv.parsePersons('202\tNOVAK JANEZ\t"voziček\nalergija"\n203\tKRANJC MARIJA');
+    eq(r.persons.length, 2);
+    eq(r.persons[0].note, 'voziček alergija');
+    eq(Csv.parsePersons('202,"NOVAK JANEZ\n203,KRANJC MARIJA').persons.length, 2, 'nezaprt narekovaj');
+  });
+
+  test('Uvoz: brez glave je soba tisti od prvih dveh stolpcev, ki ima številke', () => {
+    const r = Csv.parsePersons('NOVAK JANEZ\t202\nKRANJC MARIJA\t203\nHORVAT ANA\t');
+    eq(r.persons.map(p => p.name + '/' + p.room).join('|'), 'NOVAK JANEZ/202|KRANJC MARIJA/203|HORVAT ANA/', 'ime, soba');
+    eq(Csv.parsePersons('202\tNOVAK JANEZ\n\tKRANJC MARIJA').persons.map(p => p.name).join('|'), 'NOVAK JANEZ|KRANJC MARIJA', 'soba, ime');
+  });
+
   // ---------- izpis ----------
   const failed = results.filter(r => !r.ok);
   if (isNode) {

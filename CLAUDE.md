@@ -19,9 +19,11 @@ directly (`file://`), so **no ES modules, no fetch of local files, no CDN** — 
 ## Architecture
 
 Scripts load in this order in `index.html`: `holidays.js` → `scheduler.js` → `storage.js` → `csv.js` → `app.js`.
-Each file is an IIFE that exposes a global on `window` (`KSHolidays`, `KSScheduler`, `KSStorage`, `KSCsv`);
-all except `storage.js` also export via `module.exports` so Node tests can `require` them. `holidays.js`, `scheduler.js` and `csv.js` are DOM-free and are
-what the tests cover; keep them that way. `app.js` is the only DOM code (tabs, dialogs, calendar, print).
+Each file is an IIFE. `holidays.js`, `scheduler.js` and `csv.js` are DOM-free and are what the tests cover; keep them
+that way. In the browser they expose `KSHolidays`, `KSScheduler`, `KSCsv` on `window`; under Node they export the same
+API via `module.exports` instead, so the tests can `require` them. `storage.js` (`KSStorage`: `localStorage`, JSON
+export/import via `document`, `Blob`, `FileReader`) and `app.js` (UI: tabs, dialogs, calendar, print; no global) are
+browser-only.
 
 **State** (one object, persisted as JSON in `localStorage` under key `kopalniSeznam.v1`):
 `{ version: 1, corridors: [], persons: [], schedules: {}, ui: {} }`.
@@ -43,6 +45,8 @@ See README »Kako deluje razporejanje« for the full rules.
 
 ## Conventions
 
-- Files use **CRLF** line endings; edit with the Edit tool rather than `sed -i` to avoid converting them.
+- Line endings are mixed and there is no `.gitattributes`: `README.md`, `index.html`, `css/style.css` and `js/app.js`
+  use **CRLF**, all other files LF. Keep each file's existing endings — edit with the Edit tool rather than `sed -i`,
+  which converts CRLF to LF.
 - User-facing text, comments, test names and commit messages are in Slovenian.
 - Name comparisons use `localeCompare(..., 'sl')`; person search/filter is case- and diacritic-insensitive.

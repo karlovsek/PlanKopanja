@@ -41,7 +41,7 @@
     if (!Store.save(state)) alert('Podatkov ni bilo mogoče shraniti v brskalnik. Izvozite jih v datoteko!');
   }
 
-  function byName(a, b) { return (a.name || '').localeCompare(b.name || '', 'sl'); }
+  const byName = S.byName;
 
   function weekdayList(arr) {
     return WD_ORDER.filter(w => (arr || []).includes(w)).map(w => WD_SHORT[w]).join(', ');
@@ -73,6 +73,7 @@
   function setWeekdays(container, arr) { $$('input', container).forEach(i => { i.checked = (arr || []).includes(+i.value); }); }
 
   function corridorById(id) { return state.corridors.find(c => c.id === id); }
+  function personById(id) { return state.persons.find(p => p.id === id); }
   function personsOf(cid) { return state.persons.filter(p => p.corridorId === cid).sort(byName); }
 
   function currentCorridorId() {
@@ -92,9 +93,16 @@
     });
   }
 
+  // Izbran čip in odprto urejanje izjeme veljata samo, dokler je odprt koledar.
+  function clearScheduleInteraction() {
+    selection = null;
+    editingDay = null;
+  }
+
   // ---------- zavihki ----------
   function showTab(name) {
     if (!$('#tab-' + name)) name = 'corridors';
+    clearScheduleInteraction();
     $$('.tab').forEach(s => { s.hidden = s.id !== 'tab-' + name; });
     $$('nav button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
     state.ui.tab = name;
@@ -111,16 +119,19 @@
     else if (tab === 'backup') renderBackup();
   }
 
+  // Pojavno okno z obrazcem: ob vsakem odprtju prazno (nov vnos) ali izpolnjeno z `item` (urejanje).
+  function openDialog(dlg, reset, fill, item) {
+    reset();
+    if (item) fill(item);
+    dlg.showModal();
+    $('form', dlg).name.focus();
+  }
+
   // ---------- HODNIKI ----------
   const corridorForm = $('#corridor-form');
   const corridorDialog = $('#corridor-dialog');
 
-  function openCorridorDialog(c) {
-    resetCorridorForm();
-    if (c) editCorridor(c);
-    corridorDialog.showModal();
-    corridorForm.name.focus();
-  }
+  function openCorridorDialog(c) { openDialog(corridorDialog, resetCorridorForm, editCorridor, c); }
 
   function renderCorridors() {
     const tbody = $('#corridor-rows');
@@ -171,9 +182,9 @@
     if (!confirm(`Izbrišem hodnik »${c.name}«? Izbrisane bodo tudi vse njegove osebe (${n}) in razporedi.`)) return;
     state.corridors = state.corridors.filter(x => x.id !== c.id);
     state.persons = state.persons.filter(p => p.corridorId !== c.id);
-    Object.keys(state.schedules).forEach(k => { if (k.indexOf(c.id + '|') === 0) delete state.schedules[k]; });
+    const prefix = S.scheduleKey(c.id, '');
+    Object.keys(state.schedules).forEach(k => { if (k.indexOf(prefix) === 0) delete state.schedules[k]; });
     save();
-    resetCorridorForm();
     render();
   }
 
@@ -217,11 +228,7 @@
   const personDialog = $('#person-dialog');
 
   function openPersonDialog(p) {
-    if (!currentCorridorId()) return;
-    resetPersonForm();
-    if (p) editPerson(p);
-    personDialog.showModal();
-    personForm.name.focus();
+    if (currentCorridorId()) openDialog(personDialog, resetPersonForm, editPerson, p);
   }
 
   function renderPersons() {
@@ -254,7 +261,6 @@
   function resetPersonForm() {
     personForm.reset();
     personForm.id.value = '';
-    setWeekdays($('.weekdays', personForm), []);
     $('#interval-hint').hidden = true;
     $('#person-form-title').textContent = 'Nova oseba';
     $('.save-next', personForm).hidden = false;
@@ -270,7 +276,6 @@
     f.intervalDays.value = S.intervalOf(p);
     setWeekdays($('.weekdays', f), p.allowedWeekdays);
     f.active.checked = p.active !== false;
-    $('#interval-hint').hidden = true;
     $('#person-form-title').textContent = 'Uredi osebo: ' + p.name;
     $('.save-next', f).hidden = true;
   }
@@ -282,7 +287,6 @@
       Object.keys(s.days || {}).forEach(d => { s.days[d] = s.days[d].filter(id => id !== p.id); });
     });
     save();
-    resetPersonForm();
     render();
   }
 
@@ -308,11 +312,11 @@
       name: f.name.value.trim(),
       room: f.room.value.trim(),
       note: f.note.value.trim(),
-      intervalDays: Math.max(1, parseInt(f.intervalDays.value, 10) || 10),
+      intervalDays: S.intervalOf({ intervalDays: f.intervalDays.value }),
       allowedWeekdays: getWeekdays($('.weekdays', f)),
       active: f.active.checked
     };
-    const existing = state.persons.find(p => p.id === f.id.value);
+    const existing = personById(f.id.value);
     if (existing) Object.assign(existing, data);
     else state.persons.push(Object.assign({ id: newId(), corridorId: cid }, data));
     save();
@@ -329,37 +333,33 @@
   });
   $('#btn-new-person').addEventListener('click', () => openPersonDialog());
 
-  // Prekliči, × in Escape zaprejo okno; ob zaprtju se obrazec ponastavi.
-  [[corridorDialog, resetCorridorForm], [personDialog, resetPersonForm]].forEach(([dlg, reset]) => {
-    $$('.cancel, .modal-close', dlg).forEach(b => b.addEventListener('click', () => dlg.close()));
-    // Dogodek 'close' pride asinhrono – če je okno medtem spet odprto (Uredi), ne ponastavljaj.
-    dlg.addEventListener('close', () => { if (!dlg.open) reset(); });
-  });
+  // Prekliči in × zapreta okno (Escape ga zapre sam); obrazec se ponastavi ob naslednjem odprtju.
+  $$('.modal .cancel, .modal .modal-close').forEach(b => b.addEventListener('click', () => b.closest('dialog').close()));
 
   // ---------- RAZPORED ----------
   function defaultMonth() {
     const d = new Date();
     d.setDate(1);
     d.setMonth(d.getMonth() + 1);
-    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    return S.monthKey(d.getFullYear(), d.getMonth() + 1);
   }
   function currentMonth() {
     if (!/^\d{4}-\d{2}$/.test(state.ui.month || '')) state.ui.month = defaultMonth();
     return state.ui.month;
   }
-  function currentKey() { return currentCorridorId() + '|' + currentMonth(); }
+  function currentKey() { return S.scheduleKey(currentCorridorId(), currentMonth()); }
   function ym() { return currentMonth().split('-').map(Number); }
 
-  function setStatus(text, level) {
-    const box = $('#schedule-status');
+  function showStatus(box, text, level) {
     box.textContent = text || '';
-    box.className = 'status no-print' + (level ? ' ' + level : '');
+    ['ok', 'warn', 'error'].forEach(l => box.classList.toggle(l, l === level));
     box.hidden = !text;
   }
+  function setStatus(text, level) { showStatus($('#schedule-status'), text, level); }
 
   function ensureSchedule() {
     const key = currentKey();
-    if (!state.schedules[key]) state.schedules[key] = { days: {}, warnings: [], edited: false };
+    if (!state.schedules[key]) state.schedules[key] = { days: {}, edited: false };
     return state.schedules[key];
   }
 
@@ -519,14 +519,9 @@
 
   // Opozorila ob ročnem popravku (ne blokirajo).
   function checkPlacement(d, personId, ids) {
-    const c = corridorById(currentCorridorId());
-    const p = state.persons.find(x => x.id === personId);
-    const info = S.dayInfo(c, d);
-    const msgs = [];
-    if (!info.valid) msgs.push(`${S.shortDate(d)} je izključen dan (${info.reason}).`);
-    if (info.valid && ids.length > info.capacity) msgs.push(`${S.shortDate(d)} je presežena kapaciteta (${ids.length} / ${info.capacity}).`);
-    if (p && !S.personAllows(p, d)) msgs.push(`${p.name} ima ta dan v tednu nedovoljen.`);
-    return msgs;
+    const p = personById(personId);
+    return [S.dayIssue(corridorById(currentCorridorId()), d, ids.length), p && S.personDayIssue(p, d)]
+      .filter(Boolean).map(m => m + '.');
   }
 
   function afterEdit(sched, msgs, okText) {
@@ -556,7 +551,7 @@
     }
     sched.days[from] = (sched.days[from] || []).filter(id => id !== personId);
     sched.days[d] = target.concat(personId);
-    const p = state.persons.find(x => x.id === personId);
+    const p = personById(personId);
     afterEdit(sched, checkPlacement(d, personId, sched.days[d]),
       `Premaknjeno: ${p ? p.name : 'oseba'} (${S.shortDate(from)} → ${S.shortDate(d)})`);
   }
@@ -565,7 +560,7 @@
     const sched = ensureSchedule();
     sched.days[d] = (sched.days[d] || []).filter(x => x !== id);
     if (selection && selection.personId === id) selection = null;
-    const p = state.persons.find(x => x.id === id);
+    const p = personById(id);
     afterEdit(sched, [], `Odstranjeno: ${p ? p.name : 'oseba'} (${S.shortDate(d)})`);
   }
 
@@ -582,10 +577,11 @@
       if (!sel.value) return;
       const sched = ensureSchedule();
       sched.days[d] = (sched.days[d] || []).concat(sel.value);
-      const p = state.persons.find(x => x.id === sel.value);
+      const p = personById(sel.value);
       afterEdit(sched, checkPlacement(d, sel.value, sched.days[d]), `Dodano: ${p.name} (${S.shortDate(d)})`);
     });
-    sel.addEventListener('blur', () => setTimeout(renderSchedule, 150));
+    // Po izbiri je select že odstranjen (afterEdit je izrisal koledar) – ne izrisuj še enkrat.
+    sel.addEventListener('blur', () => setTimeout(() => { if (sel.isConnected) renderSchedule(); }, 150));
     btn.replaceWith(sel);
     sel.focus();
   }
@@ -598,7 +594,7 @@
     if (old && old.edited && !confirm('Razpored za ta mesec je bil ročno popravljen. Ga res želite na novo sestaviti (popravki se izgubijo)?')) return;
     const [y, m] = ym();
     const res = S.buildSchedule(c, state.persons, y, m, state.schedules);
-    state.schedules[key] = { days: res.days, warnings: res.warnings, edited: false, builtAt: new Date().toISOString() };
+    state.schedules[key] = { days: res.days, edited: false };
     selection = null;
     save();
     const serious = res.warnings.filter(w => w.level !== 'info').length;
@@ -626,8 +622,7 @@
   $('#schedule-month').addEventListener('change', e => {
     if (!e.target.value) return;
     state.ui.month = e.target.value;
-    editingDay = null;
-    selection = null;
+    clearScheduleInteraction();
     setStatus('', null);
     save();
     renderSchedule();
@@ -635,18 +630,15 @@
 
   $$('.corridor-select').forEach(sel => sel.addEventListener('change', e => {
     state.ui.corridorId = e.target.value;
-    editingDay = null;
-    selection = null;
+    clearScheduleInteraction();
     setStatus('', null);
-    resetPersonForm();
     save();
     render();
   }));
 
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && (selection || editingDay) && !$('dialog[open]')) {
-      selection = null;
-      editingDay = null;
+    if (e.key === 'Escape' && (selection || editingDay)) {
+      clearScheduleInteraction();
       setStatus('', null);
       renderSchedule();
     }
@@ -658,12 +650,7 @@
       `osebe: ${state.persons.length}, mesečni razporedi: ${Object.keys(state.schedules).length}.`;
   }
 
-  function importStatus(text, level) {
-    const box = $('#import-status');
-    box.textContent = text;
-    box.className = 'status ' + level;
-    box.hidden = false;
-  }
+  function importStatus(text, level) { showStatus($('#import-status'), text, level); }
 
   $('#btn-export').addEventListener('click', () => Store.exportJSON(state));
 
@@ -691,8 +678,6 @@
 
   // ---------- zagon ----------
   $$('.weekdays').forEach(renderWeekdayBoxes);
-  resetCorridorForm();
-  resetPersonForm();
   $$('nav button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
   showTab(state.ui.tab || (state.corridors.length ? 'schedule' : 'corridors'));
 })();

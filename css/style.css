@@ -81,7 +81,7 @@ textarea { width: 100%; resize: vertical; }
 }
 .card.danger { border-color: #f0b4b4; }
 .card label { display: block; margin-bottom: 0.75rem; }
-.card label > input:not([type=checkbox]), .card label > select { display: block; margin-top: 0.2rem; width: 100%; max-width: 360px; }
+.card label > input:not([type=checkbox]) { display: block; margin-top: 0.2rem; width: 100%; max-width: 360px; }
 .card label.check { display: flex; align-items: center; gap: 0.5rem; }
 fieldset { border: 1px solid var(--line); border-radius: 6px; margin: 0 0 0.75rem; padding: 0.5rem 0.75rem; }
 legend { padding: 0 0.3rem; }
@@ -117,7 +117,6 @@ table.list .empty td { color: var(--muted); text-align: center; }
   display: flex;
   flex-direction: column;
   gap: 3px;
-  cursor: default;
 }
 .day.blank { background: transparent; border: 0; }
 .day.excluded { background: var(--excluded); }
@@ -125,7 +124,7 @@ table.list .empty td { color: var(--muted); text-align: center; }
 .day.drop-target { cursor: pointer; outline: 2px dashed var(--accent); outline-offset: -2px; }
 .day-head { display: flex; justify-content: space-between; align-items: baseline; gap: 0.3rem; }
 .day-num { font-weight: 700; }
-.day-note { font-size: 0.75rem; color: var(--muted); text-align: right; }
+.day-note { flex: 1; font-size: 0.75rem; color: var(--muted); text-align: right; }
 .day-count { font-size: 0.75rem; color: var(--muted); }
 .chip {
   display: flex;
@@ -174,6 +173,18 @@ table.list .empty td { color: var(--muted); text-align: center; }
 .modal .buttons { flex-direction: row-reverse; flex-wrap: wrap; margin-top: 1rem; }
 .modal .status { margin: 0 0 0.75rem; }
 
+/* ---------- kapacitete in izjeme ---------- */
+.capacity-row { display: flex; gap: 1rem; flex-wrap: wrap; }
+.card .capacity-row label { margin: 0; }
+.card .capacity-row label > input:not([type=checkbox]) { width: 6rem; }
+.edit-cap { border: 0; background: transparent; padding: 0 0.15rem; font-size: 0.85rem; color: var(--muted); opacity: 0.55; }
+.edit-cap:hover { opacity: 1; color: var(--accent); }
+.day.override { border-style: dashed; border-color: #8a63d2; }
+.day.override .day-note { color: #6f42c1; }
+.cap-edit { background: #f6f2fd; border: 1px solid #d8c9f3; border-radius: 4px; padding: 0.3rem; font-size: 0.85rem; }
+.cap-edit input { width: 4rem; padding: 0.1rem 0.3rem; }
+.cap-edit-buttons { display: flex; gap: 0.3rem; margin-top: 0.3rem; }
+
 /* ---------- tiskanje ---------- */
 @media print {
   @page { size: A4 landscape; margin: 10mm; }
@@ -189,23 +200,7 @@ table.list .empty td { color: var(--muted); text-align: center; }
   .day.excluded { background: #e6e6e6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .chip { background: none !important; border: 0; padding: 0; font-size: 9.5pt; color: #000 !important; }
   .chip .room { color: #333 !important; }
-  .chip .x, .add-btn, .day select, .day-count { display: none !important; }
+  .chip .x, .add-btn, .day select, .day-count, .edit-cap { display: none !important; }
   .day-note { color: #333; }
-}
-
-/* ---------- kapacitete in izjeme ---------- */
-.capacity-row { display: flex; gap: 1rem; flex-wrap: wrap; }
-.card .capacity-row label { margin: 0; }
-.card .capacity-row label > input:not([type=checkbox]) { width: 6rem; }
-.edit-cap { border: 0; background: transparent; padding: 0 0.15rem; font-size: 0.85rem; color: var(--muted); opacity: 0.55; }
-.edit-cap:hover { opacity: 1; color: var(--accent); }
-.day-head .day-note { flex: 1; }
-.day.override { border-style: dashed; border-color: #8a63d2; }
-.day.override .day-note { color: #6f42c1; }
-.cap-edit { background: #f6f2fd; border: 1px solid #d8c9f3; border-radius: 4px; padding: 0.3rem; font-size: 0.85rem; }
-.cap-edit input { width: 4rem; padding: 0.1rem 0.3rem; }
-.cap-edit-buttons { display: flex; gap: 0.3rem; margin-top: 0.3rem; }
-@media print {
-  .edit-cap, .cap-edit { display: none !important; }
   .day.override { border-style: none solid solid none; border-color: #000; }
 }

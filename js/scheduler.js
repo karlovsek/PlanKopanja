@@ -45,11 +45,8 @@
     return toCap(c[kind], DEFAULT_CAPACITY[kind]);
   }
 
-  function dayKind(iso) {
-    const wd = weekday(iso);
-    if (wd === 0 || Holidays.holidayName(iso)) return 'sundayHoliday';
-    return wd === 6 ? 'saturday' : 'weekday';
-  }
+  function weekdayKind(wd) { return wd === 0 ? 'sundayHoliday' : wd === 6 ? 'saturday' : 'weekday'; }
+  function dayKind(iso) { return Holidays.holidayName(iso) ? 'sundayHoliday' : weekdayKind(weekday(iso)); }
 
   // Kapaciteta dneva in ali je veljaven za kopanje (kapaciteta > 0); če ni, zakaj.
   // Ročna izjema (corridor.dayOverrides[iso]) ima prednost pred privzeto kapaciteto.
@@ -78,19 +75,34 @@
     return personAllows(person, iso) && dayInfo(corridor, iso).valid;
   }
 
-  function nextAvailable(corridor, person, iso, limit) {
-    for (let i = 1; i <= (limit || 62); i++) {
+  function nextAvailable(corridor, person, iso) {
+    for (let i = 1; i <= 62; i++) {
       const d = addDays(iso, i);
       if (isAvailable(corridor, person, d)) return d;
     }
     return null;
   }
 
+  // Težave pri razporeditvi `count` oseb na dan `iso` oziroma osebe `person` na ta dan (ali null).
+  // Skupno za analizo razporeda in za opozorila ob ročnih popravkih.
+  function dayIssue(corridor, iso, count) {
+    const info = dayInfo(corridor, iso);
+    if (!info.valid) return `${shortDate(iso)}: dan ni veljaven (${info.reason})`;
+    if (count > info.capacity) return `${shortDate(iso)}: preveč razporejenih (${count} / ${info.capacity})`;
+    return null;
+  }
+  function personDayIssue(person, iso) {
+    return personAllows(person, iso) ? null : `${person.name}: ${shortDate(iso)} (${WEEKDAY_NAMES[weekday(iso)]}) ni dovoljen dan`;
+  }
+
+  // Ključ shranjenega razporeda; scheduleKey(id, '') je predpona vseh razporedov hodnika.
+  function scheduleKey(corridorId, month) { return corridorId + '|' + month; }
+
   // Zadnje kopanje vsake osebe pred datumom `beforeIso` (iz shranjenih razporedov tega hodnika).
   // Prestara zadnja kopanja (več kot 2 × interval + 7 dni) se ne upoštevajo.
   function knownLastBaths(corridor, persons, schedules, beforeIso) {
     const last = {};
-    const prefix = corridor.id + '|';
+    const prefix = scheduleKey(corridor.id, '');
     Object.keys(schedules || {}).forEach(key => {
       if (key.indexOf(prefix) !== 0) return;
       const days = (schedules[key] && schedules[key].days) || {};
@@ -114,11 +126,13 @@
     const all = monthDays(year, month);
     const start = all[0];
     const active = persons.filter(p => p.corridorId === corridor.id && p.active !== false);
-    const validDays = all.filter(d => dayInfo(corridor, d).valid);
+    const validDays = [];
     const cap = {};
-    validDays.forEach(d => { cap[d] = capacityOn(corridor, d); });
     const days = {};
-    validDays.forEach(d => { days[d] = []; });
+    all.forEach(d => {
+      const c = capacityOn(corridor, d);
+      if (c > 0) { validDays.push(d); cap[d] = c; days[d] = []; }
+    });
 
     const allowedCount = {};
     active.forEach(p => { allowedCount[p.id] = validDays.filter(d => personAllows(p, d)).length; });
@@ -224,12 +238,14 @@
     const byId = {};
     mine.forEach(p => { byId[p.id] = p; });
     const active = mine.filter(p => p.active !== false);
-    const validDays = all.filter(d => dayInfo(corridor, d).valid);
+    const cap = {};
+    all.forEach(d => { cap[d] = capacityOn(corridor, d); });
+    const validDays = all.filter(d => cap[d] > 0);
 
     // Kapaciteta skupaj.
     let needed = 0;
     active.forEach(p => { if (validDays.some(d => personAllows(p, d))) needed += all.length / intervalOf(p); });
-    const slots = validDays.reduce((sum, d) => sum + capacityOn(corridor, d), 0);
+    const slots = validDays.reduce((sum, d) => sum + cap[d], 0);
     if (Math.round(needed) > slots) {
       push('error', `Kapaciteta premajhna: potrebnih je približno ${Math.round(needed)} kopanj, ` +
         `v mesecu je na voljo le ${slots} mest.`);
@@ -242,7 +258,7 @@
       if (a.length === 1) perWeekday[a[0]] = (perWeekday[a[0]] || 0) + 7 / intervalOf(p);
     });
     Object.keys(perWeekday).forEach(wd => {
-      const wdCap = defaultCapacity(corridor, +wd === 0 ? 'sundayHoliday' : +wd === 6 ? 'saturday' : 'weekday');
+      const wdCap = defaultCapacity(corridor, weekdayKind(+wd));
       if (perWeekday[wd] > wdCap + 1e-9) {
         push('error', `Na dan ${WEEKDAY_NAMES[wd]} so vezane osebe, ki potrebujejo približno ` +
           `${Math.round(perWeekday[wd] * 10) / 10} mest na teden, kapaciteta je ${wdCap}.`);
@@ -253,13 +269,13 @@
     Object.keys(days).sort().forEach(d => {
       const ids = days[d] || [];
       if (!ids.length) return;
-      const info = dayInfo(corridor, d);
-      if (!info.valid) push('error', `${shortDate(d)}: dan ni veljaven (${info.reason}), razporejenih: ${ids.length}.`);
-      if (info.valid && ids.length > info.capacity) push('error', `${shortDate(d)}: preveč razporejenih (${ids.length} / ${info.capacity}).`);
+      const issue = dayIssue(corridor, d, ids.length);
+      if (issue) push('error', issue + '.');
       ids.forEach(id => {
         const p = byId[id];
         if (!p) return;
-        if (!personAllows(p, d)) push('error', `${p.name}: ${shortDate(d)} (${WEEKDAY_NAMES[weekday(d)]}) ni dovoljen dan.`);
+        const pIssue = personDayIssue(p, d);
+        if (pIssue) push('error', pIssue + '.');
         if (p.active === false) push('warn', `${p.name}: ni aktivna, a je razporejena ${shortDate(d)}.`);
       });
     });
@@ -308,7 +324,8 @@
     WEEKDAY_NAMES,
     addDays, diffDays, weekday, monthKey, monthDays, shortDate,
     DEFAULT_CAPACITY, defaultCapacity, dayKind, dayInfo, capacityOn,
-    personAllows, isAvailable, intervalOf,
+    personAllows, isAvailable, intervalOf, byName,
+    dayIssue, personDayIssue, scheduleKey,
     knownLastBaths, buildSchedule, analyzeSchedule
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

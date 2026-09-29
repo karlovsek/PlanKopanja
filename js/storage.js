@@ -22,7 +22,7 @@
             saturday: excl.includes(6) ? 0 : per,
             sundayHoliday: (excl.includes(0) || c.skipHolidays !== false) ? 0 : per
           }
-        : { weekday: 3, saturday: 1, sundayHoliday: 0 };
+        : Object.assign({}, root.KSScheduler.DEFAULT_CAPACITY);
     }
     if (!out.dayOverrides) {
       out.dayOverrides = {};

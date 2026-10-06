@@ -208,6 +208,13 @@ tr.filters input, tr.filters select { width: 100%; min-width: 4rem; font-size: 0
 .cap-blocked select { width: 100%; margin-top: 0.2rem; font-size: 0.8rem; }
 .day-blocked { font-size: 0.75rem; color: #b04040; }
 
+/* ---------- pravila razporejanja ---------- */
+.card.rules { max-width: 900px; }
+.card.rules ul { margin: 0.3rem 0; padding-left: 1.2rem; }
+.card.rules li { margin: 0.35rem 0; line-height: 1.45; }
+.rule-period { color: var(--muted); font-size: 0.85rem; white-space: nowrap; }
+.card.rules.past li { color: var(--muted); }
+
 /* ---------- tiskanje ---------- */
 .print-only { display: none; }
 @media print {
@@ -216,8 +223,8 @@ tr.filters input, tr.filters select { width: 100%; min-width: 4rem; font-size: 0
   #print-time { font-size: 9pt; white-space: nowrap; }
   @page { size: A4 landscape; margin: 10mm; }
   body { background: #fff; font-size: 10pt; }
-  .no-print, header, .tab, dialog { display: none !important; }
-  #tab-schedule { display: block !important; }
+  /* Natisne se odprti zavihek (gumb »Natisni« je v Razporedu; Ctrl+P natisne tudi npr. Pravila razporejanja). */
+  .no-print, header, .tab[hidden], dialog { display: none !important; }
   main { padding: 0; max-width: none; }
   h2 { font-size: 15pt; margin: 0 0 4mm; }
   #calendar { gap: 0; border-left: 1px solid #000; border-top: 1px solid #000; }

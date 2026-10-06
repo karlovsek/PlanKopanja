@@ -6,6 +6,7 @@
   const H = isNode ? require('../js/holidays.js') : root.KSHolidays;
   const S = isNode ? require('../js/scheduler.js') : root.KSScheduler;
   const Csv = isNode ? require('../js/csv.js') : root.KSCsv;
+  const Rules = isNode ? require('../js/rules.js') : root.KSRules;
 
   const results = [];
   function test(name, fn) {
@@ -208,6 +209,78 @@
     const r = Csv.parsePersons('NOVAK JANEZ\t202\nKRANJC MARIJA\t203\nHORVAT ANA\t');
     eq(r.persons.map(p => p.name + '/' + p.room).join('|'), 'NOVAK JANEZ/202|KRANJC MARIJA/203|HORVAT ANA/', 'ime, soba');
     eq(Csv.parsePersons('202\tNOVAK JANEZ\n\tKRANJC MARIJA').persons.map(p => p.name).join('|'), 'NOVAK JANEZ|KRANJC MARIJA', 'soba, ime');
+  });
+
+  // ---------- pravila razporejanja ----------
+  test('Pravila: veljavni datumi, zaporedne različice brez vrzeli in prekrivanj', () => {
+    // Pravi koledarski datum (ne npr. 2026-09-31).
+    const isDate = s => /^\d{4}-\d{2}-\d{2}$/.test(s) && S.addDays(s, 0) === s;
+    Rules.RULES.forEach(r => {
+      assert(r.id && r.text, 'id/text: ' + JSON.stringify(r));
+      assert(isDate(r.from), r.id + ': from ' + r.from);
+      assert(r.from >= Rules.START, r.id + ': from pred začetkom zgodovine');
+      assert(r.to === null || (isDate(r.to) && r.to >= r.from), r.id + ': to ' + r.to);
+    });
+    const ids = Array.from(new Set(Rules.RULES.map(r => r.id)));
+    ids.forEach(id => {
+      const versions = Rules.RULES.filter(r => r.id === id).sort((a, b) => (a.from < b.from ? -1 : 1));
+      for (let i = 1; i < versions.length; i++) {
+        assert(versions[i - 1].to, id + ': starejša različica nima `to`');
+        eq(versions[i].from, S.addDays(versions[i - 1].to, 1), id + ': nova različica velja dan po koncu stare;');
+      }
+    });
+  });
+  test('Pravila: veljavno besedilo se ujema s kodo razporejanja', () => {
+    const current = id => {
+      const r = Rules.RULES.find(x => x.id === id && x.to === null);
+      assert(r, 'ni veljavnega pravila ' + id);
+      return r.text;
+    };
+    const c = S.DEFAULT_CAPACITY;
+    assert(current('privzeta-kapaciteta').includes(`delavnik ${c.weekday}, sobota ${c.saturday}, nedelja/praznik ${c.sundayHoliday}`),
+      'privzeta kapaciteta');
+    assert(current('interval').includes(`privzeto ${S.DEFAULT_INTERVAL}, najmanj 1`), 'privzeti interval');
+    eq(S.intervalOf({}), S.DEFAULT_INTERVAL, 'intervalOf brez vrednosti');
+    eq(S.intervalOf({ intervalDays: -3 }), 1, 'intervalOf najmanj 1');
+    // Število dni v besedilu (brez slovničnih oblik, ki so odvisne od števila).
+    assert(new RegExp(`\\b${S.LOOKAHEAD_DAYS} veljavn`).test(current('pogled-naprej')), 'pogled naprej: število dni');
+    assert(current('pogled-naprej').includes(`prvih ${2 * S.LOOKAHEAD_DAYS} dneh`), 'pogled naprej: naslednji mesec');
+    const p = iv => ({ intervalDays: iv });
+    assert(current('zgodovina').includes('2 × interval + 7'), 'zgodovina: besedilo');
+    [5, 10, 14].forEach(iv => eq(S.historyLimit(p(iv)), 2 * iv + 7, 'historyLimit ' + iv));
+    assert(current('pogled-naprej').includes('max(1, ⌊interval / 5⌋)'), 'pogled naprej: besedilo');
+    [[3, 1], [10, 2], [14, 2], [15, 3]].forEach(([iv, n]) => eq(S.pullForwardDays(p(iv)), n, 'pullForwardDays ' + iv));
+    assert(current('prekratek-razmik').includes('polovice intervala (zaokroženo navzgor)'), 'kratek razmik: besedilo');
+    [[9, 5], [10, 5], [7, 4]].forEach(([iv, n]) => eq(S.shortGap(p(iv)), n, 'shortGap ' + iv));
+  });
+  test('Pravila: seznam praznikov se ujema s holidays.js', () => {
+    const text = Rules.RULES.find(r => r.id === 'prazniki' && r.to === null).text.toLowerCase();
+    [2026, 2027].forEach(y => Object.values(H.getHolidays(y)).forEach(name =>
+      assert(text.includes(name.toLowerCase()), 'manjka praznik ' + name)));
+  });
+  test('Pravila: zgodovina upošteva kopanja do 2 × interval + 7 dni pred mesecem', () => {
+    const p = makePersons(1);
+    const sched = d => ({ 'c1|2026-09': { days: { [d]: ['p0'] } } });
+    eq(S.knownLastBaths(c, p, sched('2026-09-04'), '2026-10-01').p0, '2026-09-04', '27 dni');
+    eq(S.knownLastBaths(c, p, sched('2026-09-03'), '2026-10-01').p0, undefined, '28 dni');
+  });
+  test('Zamuda z rokom v prejšnjem mesecu je opozorilo', () => {
+    const p = makePersons(1);
+    const prev = { 'c1|2026-09': { days: { '2026-09-15': ['p0'] } } };
+    const w = S.analyzeSchedule(c, p, 2026, 10, { '2026-10-01': ['p0'] }, prev);
+    assert(w.some(x => x.level === 'warn' && /6 dni zamude/.test(x.text)), JSON.stringify(w));
+    // Če med rokom in kopanjem ni bilo možnega dneva (zaprto), je le informacija.
+    const closed = corridor({ dayOverrides: { '2026-09-25': 0, '2026-09-26': 0, '2026-09-28': 0, '2026-09-29': 0, '2026-09-30': 0 } });
+    const w2 = S.analyzeSchedule(closed, p, 2026, 10, { '2026-10-01': ['p0'] }, prev);
+    assert(w2.some(x => x.level === 'info' && /vmes ni bilo dovoljenega dneva/.test(x.text)), JSON.stringify(w2));
+  });
+  test('Pravila: validOn vključuje oba konca obdobja', () => {
+    const r = { from: '2026-10-01', to: '2026-10-31' };
+    eq(Rules.validOn(r, '2026-10-01'), true);
+    eq(Rules.validOn(r, '2026-10-31'), true);
+    eq(Rules.validOn(r, '2026-09-30'), false);
+    eq(Rules.validOn(r, '2026-11-01'), false);
+    eq(Rules.validOn({ from: '2026-10-01', to: null }, '2030-01-01'), true);
   });
 
   // ---------- izpis ----------

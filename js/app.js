@@ -5,6 +5,7 @@
   const S = window.KSScheduler;
   const Store = window.KSStorage;
   const Csv = window.KSCsv;
+  const Rules = window.KSRules;
 
   const WD_ORDER = [1, 2, 3, 4, 5, 6, 0];
   const WD_SHORT = ['Ned', 'Pon', 'Tor', 'Sre', 'Čet', 'Pet', 'Sob'];
@@ -123,6 +124,7 @@
     else if (tab === 'persons') renderPersons();
     else if (tab === 'schedule') renderSchedule();
     else if (tab === 'backup') renderBackup();
+    else if (tab === 'rules') renderRules();
   }
 
   // Pojavno okno z obrazcem: ob vsakem odprtju prazno (nov vnos) ali izpolnjeno z `item` (urejanje).
@@ -169,6 +171,9 @@
   function resetCorridorForm() {
     corridorForm.reset();
     corridorForm.id.value = '';
+    corridorForm.capWeekday.value = S.DEFAULT_CAPACITY.weekday;
+    corridorForm.capSaturday.value = S.DEFAULT_CAPACITY.saturday;
+    corridorForm.capSundayHoliday.value = S.DEFAULT_CAPACITY.sundayHoliday;
     $('#corridor-form-title').textContent = 'Nov hodnik';
     $('.form-error', corridorForm).hidden = true;
   }
@@ -344,6 +349,7 @@
   function resetPersonForm() {
     personForm.reset();
     personForm.id.value = '';
+    personForm.intervalDays.value = S.DEFAULT_INTERVAL;
     $('#interval-hint').hidden = true;
     $('#person-form-title').textContent = 'Nova oseba';
     $('.save-next', personForm).hidden = false;
@@ -377,7 +383,7 @@
   $('.weekdays', personForm).addEventListener('change', () => {
     const hint = $('#interval-hint');
     const days = getWeekdays($('.weekdays', personForm));
-    if (days.length === 1 && personForm.intervalDays.value === '10') {
+    if (days.length === 1 && +personForm.intervalDays.value === S.DEFAULT_INTERVAL) {
       personForm.intervalDays.value = '7';
       hint.textContent = `Samo ${WD_SHORT[days[0]].toLowerCase()} → interval nastavljen na 7 dni (vsak teden). Po potrebi ga spremenite.`;
       hint.hidden = false;
@@ -473,7 +479,7 @@
     if (!cid || !fresh.length) return;
     fresh.forEach(p => state.persons.push({
       id: newId(), corridorId: cid, name: p.name, room: p.room, note: p.note,
-      intervalDays: 10, allowedWeekdays: [], active: true
+      intervalDays: S.DEFAULT_INTERVAL, allowedWeekdays: [], active: true
     }));
     save();
     importDialog.close();
@@ -887,6 +893,58 @@
     $('#backup-info').textContent = `Trenutno shranjeno – hodniki: ${state.corridors.length}, ` +
       `osebe: ${state.persons.length}, mesečni razporedi: ${Object.keys(state.schedules).length}.`;
   }
+
+  // ---------- PRAVILA RAZPOREJANJA ----------
+  function todayIso() {
+    const d = new Date();
+    return S.monthKey(d.getFullYear(), d.getMonth() + 1) + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  function ruleItem(r, withSection) {
+    const period = !r.to ? `velja od ${fmtDate(r.from)}`
+      : r.to === r.from ? `veljalo le ${fmtDate(r.from)}`
+      : `veljalo ${fmtDate(r.from)} – ${fmtDate(r.to)}`;
+    return el('li', {}, [
+      withSection ? el('strong', { text: r.section + ': ' }) : null,
+      r.text + ' ',
+      el('span', { class: 'rule-period', text: '(' + period + ')' })
+    ]);
+  }
+
+  // Pravila, ki veljajo na izbrani dan (po razdelkih), in pravila, ki so pred tem dnem že prenehala veljati.
+  function renderRules() {
+    const day = $('#rules-date').value || todayIso();
+    const box = $('#rules-list');
+    box.innerHTML = '';
+    if (day < Rules.START) {
+      box.appendChild(el('p', { class: 'status warn', text: `Zgodovina pravil se začne ${fmtDate(Rules.START)}.` }));
+      return;
+    }
+    Rules.SECTIONS.forEach(section => {
+      const rules = Rules.RULES.filter(r => r.section === section && Rules.validOn(r, day));
+      if (!rules.length) return;
+      box.appendChild(el('div', { class: 'card rules' }, [
+        el('h3', { text: section }),
+        el('ul', {}, rules.map(r => ruleItem(r)))
+      ]));
+    });
+    const past = Rules.RULES.filter(r => r.to && r.to < day)
+      .sort((a, b) => b.to.localeCompare(a.to));
+    box.appendChild(el('div', { class: 'card rules past' }, [
+      el('h3', { text: 'Pravila, ki ne veljajo več' }),
+      past.length
+        ? el('ul', {}, past.map(r => ruleItem(r, true)))
+        : el('p', { class: 'hint', text: 'Ni takih pravil.' })
+    ]));
+  }
+
+  // Datum se nastavi samo enkrat; med vnosom s tipkovnico Chrome sproži 'change' s prazno vrednostjo – takrat
+  // ne izrisuj (in ne prepiši vnosa), dokler datum ni popoln.
+  $('#rules-date').value = todayIso();
+  $('#rules-date').min = Rules.START;
+  $('#rules-date').addEventListener('change', e => {
+    if (e.target.value && !e.target.validity.badInput) renderRules();
+  });
 
   function importStatus(text, level) { showStatus($('#import-status'), text, level); }
 

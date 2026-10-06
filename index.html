@@ -14,6 +14,7 @@
       <button type="button" data-tab="persons">Osebe</button>
       <button type="button" data-tab="schedule">Razpored</button>
       <button type="button" data-tab="backup">Varnostna kopija</button>
+      <button type="button" data-tab="rules">Pravila razporejanja</button>
     </nav>
   </header>
 
@@ -42,9 +43,9 @@
         <fieldset>
           <legend>Največ oseb na dan <small>(0 = ta dan se ne kopa)</small></legend>
           <div class="capacity-row">
-            <label>Pon–pet <input name="capWeekday" type="number" min="0" value="3" required></label>
-            <label>Sobota <input name="capSaturday" type="number" min="0" value="1" required></label>
-            <label>Nedelja in praznik <input name="capSundayHoliday" type="number" min="0" value="0" required></label>
+            <label>Pon–pet <input name="capWeekday" type="number" min="0" required></label>
+            <label>Sobota <input name="capSaturday" type="number" min="0" required></label>
+            <label>Nedelja in praznik <input name="capSundayHoliday" type="number" min="0" required></label>
           </div>
         </fieldset>
         <label>Izjeme po dnevih <small>(vsaka v svoji vrstici: datum = največ oseb, npr. <code>24.12.2026 = 0</code>;
@@ -111,7 +112,7 @@
         <input type="hidden" name="id">
         <label>Ime in priimek <input name="name" required></label>
         <label>Soba <input name="room"></label>
-        <label>Kopanje vsakih (dni) <input name="intervalDays" type="number" min="1" value="10" required></label>
+        <label>Kopanje vsakih (dni) <input name="intervalDays" type="number" min="1" required></label>
         <fieldset>
           <legend>Dovoljeni dnevi v tednu <small>(nič izbranega = vsi dnevi)</small></legend>
           <div class="weekdays"></div>
@@ -190,11 +191,24 @@
         <button type="button" id="btn-wipe">Izbriši vse podatke</button>
       </div>
     </section>
+
+    <!-- PRAVILA RAZPOREJANJA -->
+    <section id="tab-rules" class="tab" hidden>
+      <h2>Pravila razporejanja</h2>
+      <p>Po teh pravilih gumb »Sestavi« sestavi koledar kopanja in preveri razpored. Prikazana so pravila, ki so
+        veljala na izbrani dan, vsako z obdobjem veljavnosti; pravila, ki so pred tem dnem že prenehala veljati,
+        so na dnu.</p>
+      <div class="controls">
+        <label class="inline">Pravila, veljavna na dan <input type="date" id="rules-date"></label>
+      </div>
+      <div id="rules-list"></div>
+    </section>
   </main>
 
   <script src="js/holidays.js"></script>
   <script src="js/scheduler.js"></script>
   <script src="js/storage.js"></script>
+  <script src="js/rules.js"></script>
   <script src="js/csv.js"></script>
   <script src="js/app.js"></script>
 </body>

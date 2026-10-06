@@ -31,7 +31,14 @@
   function shortDate(iso) { return (+iso.slice(8, 10)) + '. ' + (+iso.slice(5, 7)) + '.'; }
 
   // ---------- pravila ----------
-  function intervalOf(p) { return Math.max(1, parseInt(p.intervalDays, 10) || 10); }
+  const DEFAULT_INTERVAL = 10;
+  function intervalOf(p) { return Math.max(1, parseInt(p.intervalDays, 10) || DEFAULT_INTERVAL); }
+  // Zadnje kopanje, starejše od tega števila dni pred začetkom meseca, se ne upošteva.
+  function historyLimit(p) { return 2 * intervalOf(p) + 7; }
+  // Pogled naprej: koliko dni pred rokom je oseba lahko razporejena prej.
+  function pullForwardDays(p) { return Math.max(1, Math.floor(intervalOf(p) / 5)); }
+  // Razmik, krajši od tega, je »le N dni po prejšnjem kopanju«.
+  function shortGap(p) { return Math.ceil(intervalOf(p) / 2); }
   const DEFAULT_CAPACITY = { weekday: 3, saturday: 1, sundayHoliday: 0 };
 
   function toCap(v, def) {
@@ -118,7 +125,7 @@
     const res = {};
     persons.forEach(p => {
       const l = last[p.id];
-      if (l && diffDays(l, beforeIso) <= 2 * intervalOf(p) + 7) res[p.id] = l;
+      if (l && diffDays(l, beforeIso) <= historyLimit(p)) res[p.id] = l;
     });
     return res;
   }
@@ -214,7 +221,7 @@
           excess = Math.max(excess, demand - slots);
         });
         if (excess > 0) {
-          rest.filter(p => personAllows(p, d) && diffDays(d, due[p.id]) <= Math.max(1, Math.floor(intervalOf(p) / 5)))
+          rest.filter(p => personAllows(p, d) && diffDays(d, due[p.id]) <= pullForwardDays(p))
             .sort((a, b) => (due[a.id] < due[b.id] ? -1 : due[a.id] > due[b.id] ? 1 : 0)
               || allowedCount[b.id] - allowedCount[a.id] || byName(a, b))
             .slice(0, Math.min(free, excess))
@@ -304,10 +311,12 @@
           const gap = diffDays(prev, d);
           const dueD = addDays(prev, iv);
           if (gap > iv) {
-            const forced = !avail.some(x => x >= dueD && x < d);
+            // Rok je lahko še v prejšnjem mesecu, zato se dnevi preverijo po koledarju, ne le v tem mesecu.
+            let forced = true;
+            for (let x = dueD; x < d && forced; x = addDays(x, 1)) forced = !isAvailable(corridor, p, x);
             if (forced) push('info', `${p.name}: ${shortDate(d)} – ${nDays(gap)} od prejšnjega kopanja (vmes ni bilo dovoljenega dneva).`);
             else push('warn', `${p.name}: ${shortDate(d)} – ${nDays(gap)} od prejšnjega kopanja (${nDays(gap - iv)} zamude).`);
-          } else if (gap < Math.ceil(iv / 2)) {
+          } else if (gap < shortGap(p)) {
             push('info', `${p.name}: ${shortDate(d)} – le ${nDays(gap)} po prejšnjem kopanju.`);
           }
         }
@@ -325,10 +334,11 @@
   }
 
   const api = {
-    WEEKDAY_NAMES,
+    WEEKDAY_NAMES, LOOKAHEAD_DAYS,
     addDays, diffDays, weekday, monthKey, monthDays, shortDate,
     DEFAULT_CAPACITY, defaultCapacity, dayKind, dayInfo, capacityOn,
-    personAllows, personBlocked, isAvailable, intervalOf, byName,
+    personAllows, personBlocked, isAvailable, byName,
+    DEFAULT_INTERVAL, intervalOf, historyLimit, pullForwardDays, shortGap,
     dayIssue, personDayIssue, scheduleKey,
     knownLastBaths, buildSchedule, analyzeSchedule
   };

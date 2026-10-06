@@ -18,9 +18,10 @@ directly (`file://`), so **no ES modules, no fetch of local files, no CDN** — 
 
 ## Architecture
 
-Scripts load in this order in `index.html`: `holidays.js` → `scheduler.js` → `storage.js` → `csv.js` → `app.js`.
-Each file is an IIFE. `holidays.js`, `scheduler.js` and `csv.js` are DOM-free and are what the tests cover; keep them
-that way. In the browser they expose `KSHolidays`, `KSScheduler`, `KSCsv` on `window`; under Node they export the same
+Scripts load in this order in `index.html`: `holidays.js` → `scheduler.js` → `storage.js` → `rules.js` → `csv.js` →
+`app.js`. Each file is an IIFE. `holidays.js`, `scheduler.js`, `rules.js` and `csv.js` are DOM-free and are what the
+tests cover; keep them that way. In the browser they expose `KSHolidays`, `KSScheduler`, `KSRules`, `KSCsv` on
+`window`; under Node they export the same
 API via `module.exports` instead, so the tests can `require` them. `storage.js` (`KSStorage`: `localStorage`, JSON
 export/import via `document`, `Blob`, `FileReader`) and `app.js` (UI: tabs, dialogs, calendar, print; no global) are
 browser-only.
@@ -43,7 +44,19 @@ else default by day kind (weekday / Saturday / Sunday-or-Slovenian-holiday); cap
 `buildSchedule()` derives each person's last bath from *previous months' schedules* (so months should be built in
 order), then fills days greedily by overdue-ness with a lookahead (`LOOKAHEAD_DAYS`). `analyzeSchedule()` produces
 warnings from the actual (possibly hand-edited) schedule, so manual edits in the calendar are always re-validated.
-See README »Kako deluje razporejanje« for the full rules.
+The full rules are in `js/rules.js` (see below).
+
+**Rules tab** (`rules.js`, tab »Pravila razporejanja«): the scheduling rules as user-facing Slovenian text, grouped by
+section, each with a validity period `{ id, from, to, text }` (`from` is required; no `to` = still valid).
+- **Whenever behaviour described there changes, update `rules.js` in the same commit** — not only `scheduler.js`, but
+  also holidays (`holidays.js`), defaults (`DEFAULT_CAPACITY`, `DEFAULT_INTERVAL`, which also pre-fill the forms),
+  manual editing / rebuild behaviour and the ✎ day editor (`app.js`). Set `to` on the old entry (last day it
+  applied) and add a new entry with the same `id` and `from` = the next day; a new rule gets `from` = today.
+- Never delete or rewrite entries to change what a rule *was* — they are the history users see. Exception: a text
+  that never matched the code may be corrected in place (it is a documentation fix, not a rule change).
+- Tests check current texts against the code (`DEFAULT_CAPACITY`, `DEFAULT_INTERVAL`, `LOOKAHEAD_DAYS`,
+  `historyLimit`, `pullForwardDays`, `shortGap`, holiday names) and that versions of one `id` follow each other
+  without gaps. Keep numbers in rule texts tied to these named helpers rather than inline literals in `scheduler.js`.
 
 ## Conventions
 

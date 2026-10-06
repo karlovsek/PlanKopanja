@@ -31,19 +31,18 @@ Podatki se shranjujejo v brskalnik (`localStorage`) – **redno izvozite varnost
    - Pod koledarjem so opozorila (presežena kapaciteta, zamude, nedovoljeni dnevi …) in povzetek po osebah.
    - **Natisni** natisne koledar na list A4 (ležeče).
 4. **Varnostna kopija** – izvoz/uvoz vseh podatkov v datoteko JSON.
+5. **Pravila razporejanja** – podroben opis pravil sestavljanja koledarja. Pri vsakem pravilu je navedeno, od kdaj
+   velja; z izbiro datuma se prikažejo pravila, ki so veljala tisti dan, pravila, ki ne veljajo več, pa so spodaj
+   z obdobjem veljavnosti.
 
 ## Kako deluje razporejanje
 
-- Kapaciteta dneva = izjema za ta datum, sicer privzeta vrednost glede na vrsto dneva (pon–pet / sobota /
-  nedelja ali slovenski praznik). Dnevi s kapaciteto 0 se preskočijo.
-- Oseba se kopa le na dovoljene dni v tednu in ne na dneve z omejitvijo (»se ne more kopati«); razporeditev na tak
-  dan (tudi ročna) je napaka v opozorilih.
-- Rok osebe = zadnje kopanje + interval. Zadnje kopanje se vzame iz razporeda prejšnjih mesecev
-  (zato razporede sestavljajte po vrsti); če ga ni, se prvi roki enakomerno razporedijo po prvih dneh meseca.
-- Dan za dnem se izberejo osebe, ki jim je rok potekel (najprej tiste z največjo zamudo in najmanj dovoljenimi dnevi),
-  do kapacitete. Če bi bil naslednji možni dan za osebo preveč po roku (npr. rok na nedeljo), gre dan prej.
-  Če se v naslednjih dneh obeta gneča, se prosta mesta zapolnijo z osebami, ki jim rok poteče kmalu.
-- Opozorila se vedno izračunajo iz dejanskega (tudi ročno popravljenega) razporeda.
+Na kratko: rok osebe je zadnje kopanje + interval (zadnje kopanje iz razporeda prejšnjih mesecev, zato razporede
+sestavljajte po vrsti); dan za dnem se do kapacitete izberejo osebe, ki jim je rok potekel – tudi dan prej, če bi bil
+naslednji možni dan preveč po roku, in nekoliko prej, če se v naslednjih dneh obeta gneča. Opozorila se vedno
+izračunajo iz dejanskega (tudi ročno popravljenega) razporeda.
+
+Podrobna pravila z obdobji veljavnosti so v zavihku **Pravila razporejanja** (vir: `js/rules.js`).
 
 ## Testi
 
@@ -60,4 +59,5 @@ ali odprite `tests/scheduler.test.html` v brskalniku.
 - `js/scheduler.js` – algoritem razporejanja in analiza opozoril (brez DOM)
 - `js/storage.js` – localStorage, izvoz/uvoz JSON
 - `js/csv.js` – razčlenjevanje prilepljenega seznama oseb
+- `js/rules.js` – besedilo pravil razporejanja z obdobji veljavnosti (zavihek »Pravila razporejanja«)
 - `js/app.js` – uporabniški vmesnik

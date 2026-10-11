@@ -19,7 +19,7 @@
   let editingDay = null; // datum, za katerega je odprto urejanje izjeme
   let focusBlocked = false; // po spremembi omejitve se v urejevalniku dneva fokusira izbirnik oseb
   let personSort = { key: 'name', dir: 1 }; // razvrščanje tabele oseb (dir: 1 naraščajoče, -1 padajoče)
-  const undoStack = []; // [{ label, snapshot }] – spremembe v zavihku Razpored, samo v pomnilniku
+  const undoStack = []; // [{ label, corridorId, month, snapshot }] – spremembe v zavihku Razpored, samo v pomnilniku
 
   // ---------- pomožne ----------
   const $ = (sel, root) => (root || document).querySelector(sel);
@@ -115,9 +115,13 @@
   }
 
   // Razveljavi: pred vsako spremembo v zavihku Razpored se shrani posnetek hodnikov, oseb in razporedov
-  // (brez `ui`). Ob spremembi hodnikov ali oseb drugje se sklad izbriše, da razveljavitev ne povozi teh sprememb.
+  // (brez `ui`) ter hodnik in mesec, na katera se razveljavitev vrne. Ob spremembi hodnikov ali oseb drugje se sklad
+  // izbriše, da razveljavitev ne povozi teh sprememb.
   function pushUndo(label) {
-    undoStack.push({ label, snapshot: JSON.stringify({ corridors: state.corridors, persons: state.persons, schedules: state.schedules }) });
+    undoStack.push({
+      label, corridorId: currentCorridorId(), month: currentMonth(),
+      snapshot: JSON.stringify({ corridors: state.corridors, persons: state.persons, schedules: state.schedules }),
+    });
     if (undoStack.length > UNDO_LIMIT) undoStack.shift();
   }
 
@@ -131,10 +135,15 @@
     const last = undoStack.pop();
     if (!last) return false;
     Object.assign(state, JSON.parse(last.snapshot));
+    // Pogled se preklopi na hodnik in mesec spremembe, da je razveljavitev vidna.
+    const moved = last.corridorId !== state.ui.corridorId || last.month !== state.ui.month;
+    state.ui.corridorId = last.corridorId;
+    state.ui.month = last.month;
     clearScheduleInteraction();
     save();
     render();
-    setStatus('Razveljavljeno: ' + last.label + '.', 'ok');
+    const where = moved ? ` (hodnik »${corridorById(last.corridorId).name}«, ${monthName(last.month)})` : '';
+    setStatus('Razveljavljeno: ' + last.label + where + '.', 'ok');
     return true;
   }
 

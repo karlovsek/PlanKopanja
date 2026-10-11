@@ -295,8 +295,31 @@
   test('Pravila: zgodovina upošteva kopanja do 2 × interval + 7 dni pred mesecem', () => {
     const p = makePersons(1);
     const sched = d => ({ 'c1|2026-09': { days: { [d]: ['p0'] } } });
-    eq(S.knownLastBaths(c, p, sched('2026-09-04'), '2026-10-01').p0, '2026-09-04', '27 dni');
-    eq(S.knownLastBaths(c, p, sched('2026-09-03'), '2026-10-01').p0, undefined, '28 dni');
+    eq(S.knownLastBaths(p, sched('2026-09-04'), '2026-10-01').p0, '2026-09-04', '27 dni');
+    eq(S.knownLastBaths(p, sched('2026-09-03'), '2026-10-01').p0, undefined, '28 dni');
+  });
+  test('knownLastBaths bere razporede vseh hodnikov', () => {
+    const p = makePersons(1, { corridorId: 'c2' });
+    const schedules = { 'c1|2026-09': { days: { '2026-09-25': ['p0'] } } };
+    eq(S.knownLastBaths(p, schedules, '2026-10-01').p0, '2026-09-25');
+  });
+  test('Po premiku na drug hodnik rok sledi zgodovini', () => {
+    const p = makePersons(1, { corridorId: 'c2' });
+    const schedules = { 'c1|2026-09': { days: { '2026-09-25': ['p0'] } } };
+    const r = S.buildSchedule(corridor({ id: 'c2' }), p, 2026, 10, schedules);
+    const first = Object.keys(r.days).filter(d => r.days[d].includes('p0')).sort()[0];
+    eq(first, S.addDays('2026-09-25', 10));
+  });
+  test('removeFutureBaths odstrani le prihodnje termine na starem hodniku', () => {
+    const schedules = {
+      'c1|2026-10': { days: { '2026-10-05': ['p0', 'p1'], '2026-10-20': ['p0', 'p1'] }, edited: false },
+      'c2|2026-10': { days: { '2026-10-20': ['p0'] }, edited: false }
+    };
+    eq(S.removeFutureBaths(schedules, 'c1', 'p0', '2026-10-12'), 1);
+    eq(JSON.stringify(schedules['c1|2026-10'].days), JSON.stringify({ '2026-10-05': ['p0', 'p1'], '2026-10-20': ['p1'] }));
+    eq(JSON.stringify(schedules['c2|2026-10'].days), JSON.stringify({ '2026-10-20': ['p0'] }));
+    eq(schedules['c1|2026-10'].edited, true);
+    eq(schedules['c2|2026-10'].edited, false);
   });
   test('Zamuda z rokom v prejšnjem mesecu je opozorilo', () => {
     const p = makePersons(1);

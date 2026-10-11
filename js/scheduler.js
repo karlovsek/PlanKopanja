@@ -158,13 +158,11 @@
     return corridorMonths(schedules, corridorId).some(mo => mo < month);
   }
 
-  // Zadnje kopanje vsake osebe pred datumom `beforeIso` (iz shranjenih razporedov tega hodnika).
-  // Prestara zadnja kopanja (več kot 2 × interval + 7 dni) se ne upoštevajo.
-  function knownLastBaths(corridor, persons, schedules, beforeIso) {
+  // Zadnje kopanje vsake osebe pred datumom `beforeIso` iz shranjenih razporedov vseh hodnikov (oseba je lahko
+  // medtem premeščena). Prestara zadnja kopanja (več kot 2 × interval + 7 dni) se ne upoštevajo.
+  function knownLastBaths(persons, schedules, beforeIso) {
     const last = {};
-    const prefix = scheduleKey(corridor.id, '');
     Object.keys(schedules || {}).forEach(key => {
-      if (key.indexOf(prefix) !== 0) return;
       const days = (schedules[key] && schedules[key].days) || {};
       Object.keys(days).forEach(d => {
         if (d >= beforeIso) return;
@@ -177,6 +175,25 @@
       if (l && diffDays(l, beforeIso) <= historyLimit(p)) res[p.id] = l;
     });
     return res;
+  }
+
+  // Iz razporedov hodnika `corridorId` odstrani termine osebe z datumom >= `fromIso`; spremenjenim razporedom
+  // nastavi edited = true. Vrne število odstranjenih terminov.
+  function removeFutureBaths(schedules, corridorId, personId, fromIso) {
+    const prefix = scheduleKey(corridorId, '');
+    let removed = 0;
+    Object.keys(schedules || {}).forEach(key => {
+      if (key.indexOf(prefix) !== 0) return;
+      const s = schedules[key];
+      const days = (s && s.days) || {};
+      Object.keys(days).forEach(d => {
+        if (d < fromIso || !(days[d] || []).includes(personId)) return;
+        days[d] = days[d].filter(id => id !== personId);
+        removed++;
+        s.edited = true;
+      });
+    });
+    return removed;
   }
 
   // Razmiki med zaporednimi kopanji osebe: [{ days, fromPrev, level }]; prvi je od `prevIso` (če je podan).
@@ -215,7 +232,7 @@
     active.forEach(p => { allowedCount[p.id] = validDays.filter(d => personAllows(p, d)).length; });
 
     // Roki: iz zgodovine ali enakomerno razporejeni v prvem intervalu meseca.
-    const last = knownLastBaths(corridor, active, schedules, start);
+    const last = knownLastBaths(active, schedules, start);
     const due = {};
     const load = {};
     active.forEach(p => {
@@ -358,7 +375,7 @@
     });
 
     // Posamezne osebe.
-    const last = knownLastBaths(corridor, active, schedules, start);
+    const last = knownLastBaths(active, schedules, start);
     active.slice().sort(byName).forEach(p => {
       const iv = intervalOf(p);
       const avail = validDays.filter(d => personAllows(p, d));
@@ -407,7 +424,7 @@
     personAllows, personBlocked, isAvailable, byName,
     DEFAULT_INTERVAL, intervalOf, historyLimit, pullForwardDays, shortGap, bathGaps,
     dayIssue, personDayIssue, scheduleKey, prevMonth, laterScheduleKeys, hasEarlierSchedule,
-    knownLastBaths, buildSchedule, analyzeSchedule
+    knownLastBaths, removeFutureBaths, buildSchedule, analyzeSchedule
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.KSScheduler = api;

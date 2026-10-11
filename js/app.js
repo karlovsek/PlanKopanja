@@ -414,6 +414,7 @@
     $('#interval-hint').hidden = true;
     $('#person-form-title').textContent = 'Nova oseba';
     $('.save-next', personForm).hidden = false;
+    $('.move-corridor', personForm).hidden = true; // nova oseba dobi trenutni hodnik
     $('#person-added').hidden = true;
     formBlocked = new Set();
     $('#absence-error').hidden = true;
@@ -431,6 +432,14 @@
     f.active.checked = p.active !== false;
     $('#person-form-title').textContent = 'Uredi osebo: ' + p.name;
     $('.save-next', f).hidden = true;
+    // Izbira hodnika (premik osebe) le, če je hodnikov več.
+    const many = state.corridors.length > 1;
+    f.corridorId.innerHTML = '';
+    if (many) {
+      state.corridors.slice().sort(byName).forEach(c => f.corridorId.appendChild(el('option', { value: c.id, text: c.name })));
+      f.corridorId.value = p.corridorId;
+    }
+    $('.move-corridor', f).hidden = !many;
     formBlocked = new Set(p.blockedDates || []);
     renderAbsenceList();
   }
@@ -525,6 +534,15 @@
       blockedDates: [...formBlocked].sort()
     };
     const existing = personById(f.id.value);
+    const newCid = existing && !$('.move-corridor', f).hidden ? f.corridorId.value : null;
+    const moving = newCid && newCid !== existing.corridorId;
+    if (moving) {
+      const from = corridorById(existing.corridorId), to = corridorById(newCid);
+      if (!confirm(`Premaknem »${data.name}« na hodnik »${to.name}«? Termini od danes naprej na hodniku ` +
+        `»${from ? from.name : ''}« bodo odstranjeni, pretekli ostanejo v zgodovini. Na novem hodniku kliknite »Sestavi«.`)) return;
+      S.removeFutureBaths(state.schedules, existing.corridorId, existing.id, todayIso());
+      data.corridorId = newCid;
+    }
     const oldBlocked = new Set((existing && existing.blockedDates) || []);
     const changed = data.blockedDates.filter(d => !oldBlocked.delete(d)).concat([...oldBlocked]);
     if (existing) Object.assign(existing, data);
@@ -532,7 +550,8 @@
     saveClearUndo();
     render();
     // Spremenjene omejitve v mesecu, ki že ima razpored, se upoštevajo šele ob ponovni sestavi.
-    if (changed.some(d => state.schedules[S.scheduleKey(cid, d.slice(0, 7))])) {
+    const pcid = existing ? existing.corridorId : cid;
+    if (changed.some(d => state.schedules[S.scheduleKey(pcid, d.slice(0, 7))])) {
       showStatus($('#persons-status'), `Omejitve osebe ${data.name} so spremenjene. Kliknite »Sestavi« v zavihku ` +
         'Razpored, da se upoštevajo v razporedu.', 'ok');
     }
@@ -684,7 +703,10 @@
     dates.forEach(d => {
       const info = S.dayInfo(c, d);
       const cap = info.capacity;
-      const ids = ((sched && sched.days[d]) || []).filter(id => byId[id]);
+      // Osebe, ki so bile ta dan na hodniku, a so medtem premeščene na drug hodnik (posivljene, brez urejanja).
+      const moved = {};
+      ((sched && sched.days[d]) || []).forEach(id => { const p = !byId[id] && personById(id); if (p) moved[id] = p; });
+      const ids = ((sched && sched.days[d]) || []).filter(id => byId[id] || moved[id]);
       const cls = ['day'];
       if (!info.valid) cls.push('excluded');
       if (info.override) cls.push('override');
@@ -703,6 +725,14 @@
         ])
       ]);
       ids.forEach(id => {
+        if (moved[id]) {
+          const p = moved[id], to = corridorById(p.corridorId);
+          cell.appendChild(el('div', {
+            class: 'chip moved', title: p.name + ' → ' + (to ? to.name : ''),
+            onclick: ev => ev.stopPropagation()
+          }, [el('span', {}, [p.name, p.room ? el('span', { class: 'room', text: ' (' + p.room + ')' }) : null])]));
+          return;
+        }
         const p = byId[id];
         const chipCls = ['chip'];
         // Izbran čip; ostali termini iste osebe v mesecu so označeni drugače.
@@ -753,7 +783,7 @@
 
     renderWarnings(S.analyzeSchedule(c, state.persons, y, m, sched.days, state.schedules), sched);
     renderNotes(noted, noteNo);
-    renderSummary(c, persons, sched.days);
+    renderSummary(persons, sched.days);
   }
 
   // Urejevalnik dneva: izjema (največ oseb) in osebe, ki se ta dan ne morejo kopati.
@@ -869,11 +899,11 @@
     ]))));
   }
 
-  function renderSummary(c, persons, days) {
+  function renderSummary(persons, days) {
     const box = $('#schedule-summary');
     box.appendChild(el('h3', { text: 'Povzetek' }));
     const [y, m] = ym();
-    const last = S.knownLastBaths(c, persons, state.schedules, S.monthDays(y, m)[0]);
+    const last = S.knownLastBaths(persons, state.schedules, S.monthDays(y, m)[0]);
     const rows = persons.map(p => {
       const ds = Object.keys(days).filter(d => days[d].includes(p.id)).sort();
       // Število dni med zaporednimi kopanji; prvi razmik (v oklepaju) je od kopanja v prejšnjem mesecu.

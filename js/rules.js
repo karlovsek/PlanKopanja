@@ -44,15 +44,22 @@
       text: 'Za osebo lahko označimo dneve, ko se ne more kopati (npr. pregled, obisk, bolnišnica): posamezne dneve ' +
         'v urejevalniku dneva (✎, »Se ne more kopati«) ali obdobje od–do (največ 366 dni) v obrazcu osebe. ' +
         'Tak dan za osebo velja kot nedovoljen – pri sestavi in pri preverjanju. Omejitve, starejše od 400 dni, ' +
-        'se ob zagonu aplikacije samodejno izbrišejo.' }
+        'se ob zagonu aplikacije samodejno izbrišejo.' },
+    { id: 'premik-hodnika', from: '2026-10-12',
+      text: 'Osebo lahko premestimo na drug hodnik. Zgodovina kopanj ostane; termini od dneva premika naprej na ' +
+        'starem hodniku se odstranijo.' }
   ] },
   { section: 'Roki', rules: [
     { id: 'rok', from: START,
       text: 'Rok osebe je zadnje kopanje + interval. Po vsaki razporeditvi se rok premakne na ta dan + interval.' },
-    { id: 'zgodovina', from: START,
+    { id: 'zgodovina', from: START, to: '2026-10-11',
       text: 'Zadnje kopanje se vzame iz shranjenih razporedov prejšnjih mesecev istega hodnika, zato je ' +
         'treba mesece sestavljati po vrsti. Kopanje, starejše od 2 × interval + 7 dni pred začetkom meseca, ' +
         'se ne upošteva (oseba velja, kot da zgodovine nima).' },
+    { id: 'zgodovina', from: '2026-10-12',
+      text: 'Zadnje kopanje se vzame iz shranjenih razporedov prejšnjih mesecev vseh hodnikov (tudi če je bila ' +
+        'oseba medtem premeščena na drug hodnik), zato je treba mesece sestavljati po vrsti. Kopanje, starejše ' +
+        'od 2 × interval + 7 dni pred začetkom meseca, se ne upošteva (oseba velja, kot da zgodovine nima).' },
     { id: 'prvi-roki', from: START,
       text: 'Osebam brez zgodovine se prvi rok določi v prvem intervalu meseca: vsaka dobi tisti dovoljen dan, ' +
         'ki je glede na kapaciteto najmanj zaseden (ob enakosti prejšnji). Najprej se rok določi osebam ' +

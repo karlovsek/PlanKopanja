@@ -19,6 +19,9 @@ Podatki se shranjujejo v brskalnik (`localStorage`) – **redno izvozite varnost
    obisk; prazen »Do« = en dan, največ 366 dni); seznam pokaže vse omejitve osebe, združene v obdobja (pretekla sivo),
    `×` obdobje odstrani. Spremembe veljajo ob shranjevanju. Omejitve, starejše od 400 dni, se samodejno izbrišejo.
    Osebe s prihodnjimi omejitvami imajo v tabeli ob imenu `⊘`.
+   Pri urejanju osebe (če je hodnikov več) lahko izberete drug **Hodnik** in osebo premestite: zgodovina kopanj se
+   ohrani, termini od danes naprej na starem hodniku se odstranijo, pretekli ostanejo (posivljeni). Na novem hodniku
+   nato kliknite **Sestavi**.
    **Shrani in dodaj novo** shrani osebo in pusti okno odprto za naslednji vnos.
    **Uvozi seznam** doda več oseb naenkrat: prilepite vrstice `soba,ime` (npr. iz Excela ali CSV z glavo
    `Soba,Priimek in ime`; ločilo je lahko vejica, podpičje ali tabulator, ločena stolpca `Priimek` in `Ime` se združita).

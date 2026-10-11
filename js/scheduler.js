@@ -180,14 +180,12 @@
   // Iz razporedov hodnika `corridorId` odstrani termine osebe z datumom >= `fromIso`; spremenjenim razporedom
   // nastavi edited = true. Vrne število odstranjenih terminov.
   function removeFutureBaths(schedules, corridorId, personId, fromIso) {
-    const prefix = scheduleKey(corridorId, '');
     let removed = 0;
-    Object.keys(schedules || {}).forEach(key => {
-      if (key.indexOf(prefix) !== 0) return;
-      const s = schedules[key];
-      const days = (s && s.days) || {};
+    corridorMonths(schedules, corridorId).forEach(mo => {
+      const s = schedules[scheduleKey(corridorId, mo)];
+      const days = s.days || {};
       Object.keys(days).forEach(d => {
-        if (d < fromIso || !(days[d] || []).includes(personId)) return;
+        if (d < fromIso || !days[d].includes(personId)) return;
         days[d] = days[d].filter(id => id !== personId);
         removed++;
         s.edited = true;

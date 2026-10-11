@@ -99,11 +99,16 @@
     return id;
   }
 
+  // Napolni <select> s hodniki (po imenu).
+  function fillCorridorOptions(sel) {
+    sel.innerHTML = '';
+    state.corridors.slice().sort(byName).forEach(c => sel.appendChild(el('option', { value: c.id, text: c.name })));
+  }
+
   function fillCorridorSelects() {
     const cid = currentCorridorId();
     $$('.corridor-select').forEach(sel => {
-      sel.innerHTML = '';
-      state.corridors.slice().sort(byName).forEach(c => sel.appendChild(el('option', { value: c.id, text: c.name })));
+      fillCorridorOptions(sel);
       sel.value = cid || '';
       sel.disabled = !cid;
     });
@@ -414,7 +419,10 @@
     $('#interval-hint').hidden = true;
     $('#person-form-title').textContent = 'Nova oseba';
     $('.save-next', personForm).hidden = false;
-    $('.move-corridor', personForm).hidden = true; // nova oseba dobi trenutni hodnik
+    // Izbira hodnika je edini vir hodnika osebe; nova oseba dobi trenutni hodnik (izbira je skrita).
+    fillCorridorOptions(personForm.corridorId);
+    personForm.corridorId.value = currentCorridorId();
+    $('.move-corridor', personForm).hidden = true;
     $('#person-added').hidden = true;
     formBlocked = new Set();
     $('#absence-error').hidden = true;
@@ -432,14 +440,9 @@
     f.active.checked = p.active !== false;
     $('#person-form-title').textContent = 'Uredi osebo: ' + p.name;
     $('.save-next', f).hidden = true;
-    // Izbira hodnika (premik osebe) le, če je hodnikov več.
-    const many = state.corridors.length > 1;
-    f.corridorId.innerHTML = '';
-    if (many) {
-      state.corridors.slice().sort(byName).forEach(c => f.corridorId.appendChild(el('option', { value: c.id, text: c.name })));
-      f.corridorId.value = p.corridorId;
-    }
-    $('.move-corridor', f).hidden = !many;
+    // Izbira hodnika (premik osebe) je vidna le, če je hodnikov več.
+    f.corridorId.value = p.corridorId;
+    $('.move-corridor', f).hidden = state.corridors.length < 2;
     formBlocked = new Set(p.blockedDates || []);
     renderAbsenceList();
   }
@@ -522,8 +525,7 @@
   personForm.addEventListener('submit', e => {
     e.preventDefault();
     const f = personForm;
-    const cid = currentCorridorId();
-    if (!cid) return;
+    if (!currentCorridorId()) return;
     const data = {
       name: f.name.value.trim(),
       room: f.room.value.trim(),
@@ -531,27 +533,24 @@
       intervalDays: S.intervalOf({ intervalDays: f.intervalDays.value }),
       allowedWeekdays: getWeekdays($('.weekdays', f)),
       active: f.active.checked,
-      blockedDates: [...formBlocked].sort()
+      blockedDates: [...formBlocked].sort(),
+      corridorId: f.corridorId.value
     };
     const existing = personById(f.id.value);
-    const newCid = existing && !$('.move-corridor', f).hidden ? f.corridorId.value : null;
-    const moving = newCid && newCid !== existing.corridorId;
-    if (moving) {
-      const from = corridorById(existing.corridorId), to = corridorById(newCid);
-      if (!confirm(`Premaknem »${data.name}« na hodnik »${to.name}«? Termini od danes naprej na hodniku ` +
-        `»${from ? from.name : ''}« bodo odstranjeni, pretekli ostanejo v zgodovini. Na novem hodniku kliknite »Sestavi«.`)) return;
+    if (existing && data.corridorId !== existing.corridorId) {
+      if (!confirm(`Premaknem »${data.name}« na hodnik »${corridorById(data.corridorId).name}«? Termini od danes ` +
+        `naprej na hodniku »${corridorById(existing.corridorId).name}« bodo odstranjeni, pretekli ostanejo v ` +
+        'zgodovini. Na novem hodniku kliknite »Sestavi«.')) return;
       S.removeFutureBaths(state.schedules, existing.corridorId, existing.id, todayIso());
-      data.corridorId = newCid;
     }
     const oldBlocked = new Set((existing && existing.blockedDates) || []);
     const changed = data.blockedDates.filter(d => !oldBlocked.delete(d)).concat([...oldBlocked]);
     if (existing) Object.assign(existing, data);
-    else state.persons.push(Object.assign({ id: newId(), corridorId: cid }, data));
+    else state.persons.push(Object.assign({ id: newId() }, data));
     saveClearUndo();
     render();
     // Spremenjene omejitve v mesecu, ki že ima razpored, se upoštevajo šele ob ponovni sestavi.
-    const pcid = existing ? existing.corridorId : cid;
-    if (changed.some(d => state.schedules[S.scheduleKey(pcid, d.slice(0, 7))])) {
+    if (changed.some(d => state.schedules[S.scheduleKey(data.corridorId, d.slice(0, 7))])) {
       showStatus($('#persons-status'), `Omejitve osebe ${data.name} so spremenjene. Kliknite »Sestavi« v zavihku ` +
         'Razpored, da se upoštevajo v razporedu.', 'ok');
     }
@@ -703,10 +702,8 @@
     dates.forEach(d => {
       const info = S.dayInfo(c, d);
       const cap = info.capacity;
-      // Osebe, ki so bile ta dan na hodniku, a so medtem premeščene na drug hodnik (posivljene, brez urejanja).
-      const moved = {};
-      ((sched && sched.days[d]) || []).forEach(id => { const p = !byId[id] && personById(id); if (p) moved[id] = p; });
-      const ids = ((sched && sched.days[d]) || []).filter(id => byId[id] || moved[id]);
+      // Vključene so tudi osebe, ki so bile ta dan na hodniku, a so medtem premeščene na drug hodnik.
+      const ids = ((sched && sched.days[d]) || []).filter(id => byId[id] || personById(id));
       const cls = ['day'];
       if (!info.valid) cls.push('excluded');
       if (info.override) cls.push('override');
@@ -725,12 +722,13 @@
         ])
       ]);
       ids.forEach(id => {
-        if (moved[id]) {
-          const p = moved[id], to = corridorById(p.corridorId);
+        // Premeščena oseba: posivljen čip brez urejanja.
+        if (!byId[id]) {
+          const p = personById(id);
           cell.appendChild(el('div', {
-            class: 'chip moved', title: p.name + ' → ' + (to ? to.name : ''),
+            class: 'chip moved', title: p.name + ' → ' + corridorById(p.corridorId).name,
             onclick: ev => ev.stopPropagation()
-          }, [el('span', {}, [p.name, p.room ? el('span', { class: 'room', text: ' (' + p.room + ')' }) : null])]));
+          }, [chipLabel(p)]));
           return;
         }
         const p = byId[id];
@@ -743,11 +741,7 @@
           title: p.note || '',
           onclick: ev => { ev.stopPropagation(); onChipClick(d, id); }
         }, [
-          el('span', {}, [
-            p.name,
-            p.room ? el('span', { class: 'room', text: ' (' + p.room + ')' }) : null,
-            noteNo[id] ? noteRef(noteNo[id]) : null
-          ]),
+          chipLabel(p, noteNo[id]),
           el('button', {
             type: 'button', class: 'x', title: 'Odstrani', text: '×',
             onclick: ev => { ev.stopPropagation(); removePerson(d, id); }
@@ -888,6 +882,15 @@
 
   function noteText(p) { return str(p.note).trim(); }
   function noteRef(n) { return el('sup', { class: 'note-ref', text: String(n) }); }
+
+  // Besedilo čipa v koledarju: ime, soba in (neobvezno) številka opombe.
+  function chipLabel(p, noteNo) {
+    return el('span', {}, [
+      p.name,
+      p.room ? el('span', { class: 'room', text: ' (' + p.room + ')' }) : null,
+      noteNo ? noteRef(noteNo) : null
+    ]);
+  }
 
   // Legenda opomb pod koledarjem (natisne se skupaj z njim); številke so iste kot ob imenih v koledarju.
   function renderNotes(noted, noteNo) {

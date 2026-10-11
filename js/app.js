@@ -18,6 +18,7 @@
   let selection = null; // { date, personId } – izbran čip za premik
   let editingDay = null; // datum, za katerega je odprto urejanje izjeme
   let focusBlocked = false; // po spremembi omejitve se v urejevalniku dneva fokusira izbirnik oseb
+  let formBlocked = new Set(); // delovna kopija omejitev odprtega obrazca osebe (zapiše se ob shranjevanju)
   let personSort = { key: 'name', dir: 1 }; // razvrščanje tabele oseb (dir: 1 naraščajoče, -1 padajoče)
   const undoStack = []; // [{ label, corridorId, month, snapshot }] – spremembe v zavihku Razpored, samo v pomnilniku
 
@@ -372,9 +373,13 @@
         colspan: 7, text: all.length ? 'Ni oseb, ki ustrezajo filtru.' : 'Na tem hodniku ni oseb.'
       })]));
     }
+    const today = todayIso();
     list.forEach(p => {
+      const future = (p.blockedDates || []).filter(d => d >= today);
       tbody.appendChild(el('tr', { class: p.active === false ? 'inactive' : '' }, [
-        el('td', { text: p.name }),
+        el('td', {}, [p.name, future.length
+          ? el('span', { class: 'blocked-mark no-print', title: 'Ima omejitve: ' + rangeText(S.groupDateRanges(future)[0]), text: ' ⊘' })
+          : null]),
         el('td', { text: p.room || '' }),
         el('td', { text: 'vsakih ' + S.intervalOf(p) + ' dni' }),
         el('td', { text: weekdayList(p.allowedWeekdays) || 'vsi' }),
@@ -410,6 +415,9 @@
     $('#person-form-title').textContent = 'Nova oseba';
     $('.save-next', personForm).hidden = false;
     $('#person-added').hidden = true;
+    formBlocked = new Set();
+    $('#absence-error').hidden = true;
+    renderAbsenceList();
   }
 
   function editPerson(p) {
@@ -423,7 +431,61 @@
     f.active.checked = p.active !== false;
     $('#person-form-title').textContent = 'Uredi osebo: ' + p.name;
     $('.save-next', f).hidden = true;
+    formBlocked = new Set(p.blockedDates || []);
+    renderAbsenceList();
   }
+
+  // Obdobje { from, to } kot »30. 10. 2026 – 2. 11. 2026 (4 dni)« oz. »3. 11. 2026« za en dan.
+  function rangeText(r) {
+    return r.from === r.to ? fmtDate(r.from)
+      : fmtDate(r.from) + ' – ' + fmtDate(r.to) + ' (' + S.nDays(S.diffDays(r.from, r.to) + 1) + ')';
+  }
+
+  // Omejitve v obrazcu osebe, združene v obdobja; pretekla obdobja so siva.
+  function renderAbsenceList() {
+    const ul = $('.absence-list', personForm);
+    ul.innerHTML = '';
+    const ranges = S.groupDateRanges([...formBlocked].sort());
+    if (!ranges.length) ul.appendChild(el('li', { class: 'hint', text: 'Ni omejitev.' }));
+    const today = todayIso();
+    ranges.forEach(r => {
+      ul.appendChild(el('li', { class: r.to < today ? 'past' : '' }, [
+        el('span', { text: rangeText(r) }),
+        el('button', {
+          type: 'button', class: 'x', title: 'Odstrani obdobje', 'aria-label': 'Odstrani obdobje', text: '×',
+          onclick: () => {
+            S.dateRange(r.from, r.to).forEach(d => formBlocked.delete(d));
+            renderAbsenceList();
+          }
+        })
+      ]));
+    });
+  }
+
+  function addAbsence() {
+    const f = personForm;
+    const err = $('#absence-error');
+    const from = f.absFrom.value;
+    const to = f.absTo.value || from;
+    let msg = '';
+    if (!from || f.absFrom.validity.badInput) msg = 'Vnesite datum Od.';
+    else if (f.absTo.validity.badInput) msg = 'Datum Do ni veljaven.';
+    else if (to < from) msg = 'Datum Do je pred datumom Od.';
+    else if (S.diffDays(from, to) + 1 > S.MAX_ABSENCE_DAYS) msg = `Obdobje je daljše od ${S.MAX_ABSENCE_DAYS} dni.`;
+    err.textContent = msg;
+    err.hidden = !msg;
+    if (msg) return;
+    S.dateRange(from, to).forEach(d => formBlocked.add(d));
+    f.absFrom.value = '';
+    f.absTo.value = '';
+    renderAbsenceList();
+    f.absFrom.focus();
+  }
+
+  $('#btn-add-absence').addEventListener('click', addAbsence);
+  [personForm.absFrom, personForm.absTo].forEach(inp => inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); addAbsence(); }
+  }));
 
   function deletePerson(p) {
     if (!confirm(`Izbrišem osebo »${p.name}«? Odstranjena bo tudi iz vseh razporedov.`)) return;
@@ -459,13 +521,21 @@
       note: f.note.value.trim(),
       intervalDays: S.intervalOf({ intervalDays: f.intervalDays.value }),
       allowedWeekdays: getWeekdays($('.weekdays', f)),
-      active: f.active.checked
+      active: f.active.checked,
+      blockedDates: [...formBlocked].sort()
     };
     const existing = personById(f.id.value);
+    const oldBlocked = new Set((existing && existing.blockedDates) || []);
+    const changed = data.blockedDates.filter(d => !oldBlocked.delete(d)).concat([...oldBlocked]);
     if (existing) Object.assign(existing, data);
     else state.persons.push(Object.assign({ id: newId(), corridorId: cid }, data));
     saveClearUndo();
     render();
+    // Spremenjene omejitve v mesecu, ki že ima razpored, se upoštevajo šele ob ponovni sestavi.
+    if (changed.some(d => state.schedules[S.scheduleKey(cid, d.slice(0, 7))])) {
+      showStatus($('#persons-status'), `Omejitve osebe ${data.name} so spremenjene. Kliknite »Sestavi« v zavihku ` +
+        'Razpored, da se upoštevajo v razporedu.', 'ok');
+    }
     if (!existing && e.submitter && e.submitter.value === 'next') {
       resetPersonForm();
       const added = $('#person-added');

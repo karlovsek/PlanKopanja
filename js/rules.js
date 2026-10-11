@@ -37,9 +37,13 @@
         'Na nedovoljen dan se oseba ne razporedi.' },
     { id: 'neaktivne', from: START,
       text: 'Neaktivne osebe se ne razporejajo in se ne upoštevajo pri izračunu potrebne kapacitete.' },
-    { id: 'omejitve-datumov', from: START,
+    { id: 'omejitve-datumov', from: START, to: '2026-10-11',
       text: 'Za osebo lahko v urejevalniku dneva (✎, »Se ne more kopati«) označimo posamezne dneve, ko se ne more ' +
-        'kopati (npr. pregled, obisk). Tak dan za osebo velja kot nedovoljen – pri sestavi in pri preverjanju.' }
+        'kopati (npr. pregled, obisk). Tak dan za osebo velja kot nedovoljen – pri sestavi in pri preverjanju.' },
+    { id: 'omejitve-datumov', from: '2026-10-12',
+      text: 'Za osebo lahko označimo dneve, ko se ne more kopati (npr. pregled, obisk, bolnišnica): posamezne dneve ' +
+        'v urejevalniku dneva (✎, »Se ne more kopati«) ali obdobje od–do (največ 366 dni) v obrazcu osebe. ' +
+        'Tak dan za osebo velja kot nedovoljen – pri sestavi in pri preverjanju.' }
   ] },
   { section: 'Roki', rules: [
     { id: 'rok', from: START,

@@ -15,7 +15,10 @@ Podatki se shranjujejo v brskalnik (`localStorage`) – **redno izvozite varnost
    hodnika ali neposredno v koledarju z gumbom ✎.
 2. **Osebe** – izberite hodnik in z gumbom **+ Nova oseba** dodajte osebe: soba, opomba, na koliko dni se kopa (privzeto 10) in
    dovoljeni dnevi v tednu (nič izbranega = vsi). Pri osebi, ki se kopa samo en dan v tednu (npr. samo ob torkih),
-   se interval samodejno predlaga na 7 dni. **Shrani in dodaj novo** shrani osebo in pusti okno odprto za naslednji vnos.
+   se interval samodejno predlaga na 7 dni. V razdelku **Se ne more kopati** vnesete obdobje od–do (npr. bolnišnica,
+   obisk; prazen »Do« = en dan, največ 366 dni); seznam pokaže vse omejitve osebe, združene v obdobja (pretekla sivo),
+   `×` obdobje odstrani. Spremembe veljajo ob shranjevanju. Osebe s prihodnjimi omejitvami imajo v tabeli ob imenu `⊘`.
+   **Shrani in dodaj novo** shrani osebo in pusti okno odprto za naslednji vnos.
    **Uvozi seznam** doda več oseb naenkrat: prilepite vrstice `soba,ime` (npr. iz Excela ali CSV z glavo
    `Soba,Priimek in ime`; ločilo je lahko vejica, podpičje ali tabulator, ločena stolpca `Priimek` in `Ime` se združita).
    Osebe, ki na hodniku že obstajajo, se preskočijo; predogled pokaže število novih oseb in prvo med njimi.
@@ -27,6 +30,7 @@ Podatki se shranjujejo v brskalnik (`localStorage`) – **redno izvozite varnost
    - `✎` na dnevu nastavi izjemo (največ oseb ta dan); »Privzeto« izjemo odstrani. Dnevi z izjemo imajo črtkan rob.
      V istem urejevalniku pod »Se ne more kopati:« izberete osebe, ki se ta dan ne morejo kopati (npr. pregled,
      obisk); `×` omejitev odstrani. Osebe z omejitvijo so v celici dneva izpisane za znakom `⊘` (ne natisnejo se).
+     Omejitve so vidne in urejene tudi v obrazcu osebe.
      Po spremembi izjem ali omejitev kliknite **Sestavi**, da se razpored ponovno sestavi.
    - Opombe oseb so ob imenu označene s številko, besedilo opomb je pod koledarjem (tudi na natisu).
    - Pod koledarjem so opozorila (presežena kapaciteta, zamude, nedovoljeni dnevi …) in povzetek po osebah.

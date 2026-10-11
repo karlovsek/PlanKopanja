@@ -222,6 +222,16 @@ tr.filters input, tr.filters select { width: 100%; min-width: 4rem; font-size: 0
 .cap-blocked select { width: 100%; margin-top: 0.2rem; font-size: 0.8rem; }
 .day-blocked { font-size: 0.75rem; color: #b04040; }
 
+/* ---------- odsotnost v obrazcu osebe ---------- */
+.absence-add { display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap; }
+.absence-add label { margin: 0; }
+.absence-list { list-style: none; margin: 0.4rem 0 0; padding: 0; }
+.absence-list li { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.absence-list li.past { color: var(--muted); }
+.absence-list .x { border: 0; background: transparent; padding: 0 0.2rem; font-size: 1rem; line-height: 1; opacity: 0.6; }
+.absence-list .x:hover { opacity: 1; }
+.blocked-mark { color: var(--muted); }
+
 /* ---------- pravila razporejanja ---------- */
 .card.rules { max-width: 900px; }
 .card.rules ul { margin: 0.3rem 0; padding-left: 1.2rem; }

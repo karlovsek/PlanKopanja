@@ -119,6 +119,16 @@
           <div class="weekdays"></div>
           <p class="hint" id="interval-hint" hidden></p>
         </fieldset>
+        <fieldset class="absences">
+          <legend>Se ne more kopati <small>(npr. bolnišnica, obisk)</small></legend>
+          <div class="absence-add">
+            <label>Od <input type="date" name="absFrom"></label>
+            <label>Do <input type="date" name="absTo"></label>
+            <button type="button" class="small" id="btn-add-absence">Dodaj</button>
+          </div>
+          <p class="form-error" id="absence-error" hidden></p>
+          <ul class="absence-list"></ul>
+        </fieldset>
         <label class="check"><input type="checkbox" name="active" checked> Aktivna (vključena v razpored)</label>
         <label>Opomba <input name="note"></label>
         <div class="buttons">

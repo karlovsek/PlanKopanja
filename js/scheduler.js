@@ -8,6 +8,7 @@
 
   const DAY_MS = 86400000;
   const LOOKAHEAD_DAYS = 4;
+  const MAX_ABSENCE_DAYS = 366; // najdaljše obdobje odsotnosti, vneseno naenkrat v obrazcu osebe
   const WEEKDAY_NAMES = ['nedelja', 'ponedeljek', 'torek', 'sreda', 'četrtek', 'petek', 'sobota'];
 
   // ---------- datumi (ISO nizi "YYYY-MM-DD", računano v UTC) ----------
@@ -29,6 +30,22 @@
   }
   function nDays(n) { const r = n % 100; return n + ' ' + (r === 1 ? 'dan' : r === 2 ? 'dneva' : (r === 3 || r === 4) ? 'dnevi' : 'dni'); }
   function shortDate(iso) { return (+iso.slice(8, 10)) + '. ' + (+iso.slice(5, 7)) + '.'; }
+  // Vsi datumi od `from` do `to` (vključno); [] če to < from.
+  function dateRange(from, to) {
+    const res = [];
+    for (let d = from; d <= to; d = addDays(d, 1)) res.push(d);
+    return res;
+  }
+  // Urejen seznam datumov → zaporedna obdobja [{ from, to }].
+  function groupDateRanges(dates) {
+    const res = [];
+    dates.forEach(d => {
+      const prev = res[res.length - 1];
+      if (prev && diffDays(prev.to, d) === 1) prev.to = d;
+      else res.push({ from: d, to: d });
+    });
+    return res;
+  }
 
   // ---------- pravila ----------
   const DEFAULT_INTERVAL = 10;
@@ -373,6 +390,7 @@
   const api = {
     WEEKDAY_NAMES, LOOKAHEAD_DAYS,
     addDays, diffDays, weekday, monthKey, monthDays, shortDate, nDays,
+    MAX_ABSENCE_DAYS, dateRange, groupDateRanges,
     DEFAULT_CAPACITY, defaultCapacity, dayKind, dayInfo, capacityOn,
     personAllows, personBlocked, isAvailable, byName,
     DEFAULT_INTERVAL, intervalOf, historyLimit, pullForwardDays, shortGap, bathGaps,

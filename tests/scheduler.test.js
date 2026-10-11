@@ -152,6 +152,27 @@
     const bad = r.warnings.filter(w => w.level !== 'info' && w.text.indexOf(p[0].name) === 0);
     eq(bad.length, 0, JSON.stringify(bad));
   });
+  test('dateRange vrne vse datume obdobja (tudi čez mesec)', () => {
+    eq(JSON.stringify(S.dateRange('2026-10-30', '2026-11-02')),
+      JSON.stringify(['2026-10-30', '2026-10-31', '2026-11-01', '2026-11-02']), 'čez mesec');
+    eq(S.dateRange('2026-10-05', '2026-10-05').length, 1, 'en dan');
+    eq(S.dateRange('2026-10-05', '2026-10-04').length, 0, 'obrnjeno');
+  });
+  test('groupDateRanges združi zaporedne datume v obdobja', () => {
+    eq(JSON.stringify(S.groupDateRanges(['2026-10-01', '2026-10-02', '2026-10-03', '2026-10-07'])),
+      JSON.stringify([{ from: '2026-10-01', to: '2026-10-03' }, { from: '2026-10-07', to: '2026-10-07' }]));
+    eq(JSON.stringify(S.groupDateRanges(['2026-10-31', '2026-11-01'])),
+      JSON.stringify([{ from: '2026-10-31', to: '2026-11-01' }]), 'čez mesec');
+    eq(S.groupDateRanges([]).length, 0, 'prazno');
+  });
+  test('Oseba z odsotnostjo od–do v tem obdobju ni razporejena', () => {
+    const p = makePersons(11);
+    p[0].blockedDates = S.dateRange('2026-10-05', '2026-10-18');
+    const r = S.buildSchedule(c, p, 2026, 10, {});
+    const ds = datesOf(r.days, 'p0');
+    assert(ds.length > 0, 'oseba je razporejena izven obdobja');
+    ds.forEach(d => assert(!p[0].blockedDates.includes(d), 'razporejena v odsotnosti ' + d));
+  });
   test('Analiza zazna ročno postavitev na blokiran dan', () => {
     const p = makePersons(1);
     p[0].blockedDates = ['2026-10-14'];
@@ -241,6 +262,7 @@
       'privzeta kapaciteta');
     assert(current('interval').includes(`privzeto ${S.DEFAULT_INTERVAL}, najmanj 1`), 'privzeti interval');
     assert(current('rocni-popravki').includes(`Zadnjih ${Rules.UNDO_LIMIT} sprememb`), 'razveljavitve');
+    assert(current('omejitve-datumov').includes(`največ ${S.MAX_ABSENCE_DAYS} dni`), 'najdaljša odsotnost');
     eq(S.intervalOf({}), S.DEFAULT_INTERVAL, 'intervalOf brez vrednosti');
     eq(S.intervalOf({ intervalDays: -3 }), 1, 'intervalOf najmanj 1');
     // Število dni v besedilu (brez slovničnih oblik, ki so odvisne od števila).

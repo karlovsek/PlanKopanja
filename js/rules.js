@@ -6,7 +6,7 @@
 (function (root) {
   'use strict';
 
-  const START = '2026-09-29'; // začetek zgodovine pravil (prva različica aplikacije)
+  const START = '2026-10-07'; // začetek zgodovine pravil
 
   const GROUPS = [
   { section: 'Dnevi in kapaciteta', rules: [
@@ -36,7 +36,7 @@
         'Na nedovoljen dan se oseba ne razporedi.' },
     { id: 'neaktivne', from: START,
       text: 'Neaktivne osebe se ne razporejajo in se ne upoštevajo pri izračunu potrebne kapacitete.' },
-    { id: 'omejitve-datumov', from: '2026-09-30',
+    { id: 'omejitve-datumov', from: START,
       text: 'Za osebo lahko v urejevalniku dneva (✎, »Se ne more kopati«) označimo posamezne dneve, ko se ne more ' +
         'kopati (npr. pregled, obisk). Tak dan za osebo velja kot nedovoljen – pri sestavi in pri preverjanju.' }
   ] },
@@ -90,19 +90,14 @@
         'kot je kapaciteta.' },
     { id: 'napaka-oseba-dan', from: START,
       text: 'Napaka, ko je oseba razporejena na zanjo nedovoljen dan v tednu.' },
-    { id: 'napaka-omejitev', from: '2026-09-30',
+    { id: 'napaka-omejitev', from: START,
       text: 'Napaka, ko je oseba razporejena na dan, ko se ne more kopati (omejitev).' },
     { id: 'napaka-ni-dneva', from: START,
       text: 'Napaka, ko aktivna oseba v mesecu nima nobenega veljavnega in dovoljenega dneva.' },
     { id: 'opozorilo-neaktivna', from: START,
       text: 'Opozorilo, ko je razporejena neaktivna oseba, in ko aktivna oseba brez zgodovine v mesecu ni ' +
         'razporejena.' },
-    { id: 'zamuda', from: START, to: '2026-10-06',
-      text: 'Razmik od prejšnjega kopanja, daljši od intervala, je opozorilo z dnevi zamude – razen če med ' +
-        'rokom in tem kopanjem v tem mesecu ni bilo nobenega dovoljenega dneva; takrat je le informacija. ' +
-        'Če je bil rok še v prejšnjem mesecu, so se upoštevali le dnevi tega meseca, zato je bila taka zamuda ' +
-        'pogosto le informacija.' },
-    { id: 'zamuda', from: '2026-10-07',
+    { id: 'zamuda', from: START,
       text: 'Razmik od prejšnjega kopanja, daljši od intervala, je opozorilo z dnevi zamude – razen če med ' +
         'rokom (tudi če je bil še v prejšnjem mesecu) in tem kopanjem ni bilo nobenega dneva, ko bi se oseba ' +
         'lahko kopala; takrat je le informacija.' },
@@ -117,11 +112,7 @@
       text: 'Razpored lahko ročno popravimo: klik na ime ga izbere, klik na drug dan ga premakne, × ga odstrani, ' +
         '+ doda osebo. Popravki niso blokirani; težave (npr. presežena kapaciteta, nedovoljen dan) se izpišejo ' +
         'kot opozorilo in v seznamu opozoril.' },
-    { id: 'ponovna-sestava', from: START, to: '2026-09-29',
-      text: 'Spremembe kapacitet, izjem in oseb ne spremenijo že sestavljenega razporeda – upoštevajo se šele ' +
-        'ob ponovnem kliku »Sestavi«. Izjema: izbrisana oseba se takoj odstrani iz vseh shranjenih razporedov. ' +
-        'Ročno popravljen razpored se na novo sestavi le po potrditvi (popravki se izgubijo).' },
-    { id: 'ponovna-sestava', from: '2026-09-30',
+    { id: 'ponovna-sestava', from: START,
       text: 'Spremembe kapacitet, izjem, oseb in omejitev ne spremenijo že sestavljenega razporeda – upoštevajo se ' +
         'šele ob ponovnem kliku »Sestavi«. Izjema: izbrisana oseba se takoj odstrani iz vseh shranjenih ' +
         'razporedov. Ročno popravljen razpored se na novo sestavi le po potrditvi (popravki se izgubijo).' }

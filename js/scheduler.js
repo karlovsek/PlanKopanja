@@ -9,6 +9,7 @@
   const DAY_MS = 86400000;
   const LOOKAHEAD_DAYS = 4;
   const MAX_ABSENCE_DAYS = 366; // najdaljše obdobje odsotnosti, vneseno naenkrat v obrazcu osebe
+  const BLOCKED_KEEP_DAYS = 400; // omejitve, starejše od toliko dni, se izbrišejo
   const WEEKDAY_NAMES = ['nedelja', 'ponedeljek', 'torek', 'sreda', 'četrtek', 'petek', 'sobota'];
 
   // ---------- datumi (ISO nizi "YYYY-MM-DD", računano v UTC) ----------
@@ -45,6 +46,17 @@
       else res.push({ from: d, to: d });
     });
     return res;
+  }
+  // Iz oseb odstrani blockedDates pred `beforeIso` (spremeni objekte). Vrne število odstranjenih datumov.
+  function pruneBlockedDates(persons, beforeIso) {
+    let removed = 0;
+    persons.forEach(p => {
+      if (!p.blockedDates) return;
+      const keep = p.blockedDates.filter(d => d >= beforeIso);
+      removed += p.blockedDates.length - keep.length;
+      if (keep.length < p.blockedDates.length) p.blockedDates = keep;
+    });
+    return removed;
   }
 
   // ---------- pravila ----------
@@ -390,7 +402,7 @@
   const api = {
     WEEKDAY_NAMES, LOOKAHEAD_DAYS,
     addDays, diffDays, weekday, monthKey, monthDays, shortDate, nDays,
-    MAX_ABSENCE_DAYS, dateRange, groupDateRanges,
+    MAX_ABSENCE_DAYS, dateRange, groupDateRanges, BLOCKED_KEEP_DAYS, pruneBlockedDates,
     DEFAULT_CAPACITY, defaultCapacity, dayKind, dayInfo, capacityOn,
     personAllows, personBlocked, isAvailable, byName,
     DEFAULT_INTERVAL, intervalOf, historyLimit, pullForwardDays, shortGap, bathGaps,

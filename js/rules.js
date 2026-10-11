@@ -43,7 +43,8 @@
     { id: 'omejitve-datumov', from: '2026-10-12',
       text: 'Za osebo lahko označimo dneve, ko se ne more kopati (npr. pregled, obisk, bolnišnica): posamezne dneve ' +
         'v urejevalniku dneva (✎, »Se ne more kopati«) ali obdobje od–do (največ 366 dni) v obrazcu osebe. ' +
-        'Tak dan za osebo velja kot nedovoljen – pri sestavi in pri preverjanju.' }
+        'Tak dan za osebo velja kot nedovoljen – pri sestavi in pri preverjanju. Omejitve, starejše od 400 dni, ' +
+        'se ob zagonu aplikacije samodejno izbrišejo.' }
   ] },
   { section: 'Roki', rules: [
     { id: 'rok', from: START,

@@ -17,7 +17,8 @@ Podatki se shranjujejo v brskalnik (`localStorage`) – **redno izvozite varnost
    dovoljeni dnevi v tednu (nič izbranega = vsi). Pri osebi, ki se kopa samo en dan v tednu (npr. samo ob torkih),
    se interval samodejno predlaga na 7 dni. V razdelku **Se ne more kopati** vnesete obdobje od–do (npr. bolnišnica,
    obisk; prazen »Do« = en dan, največ 366 dni); seznam pokaže vse omejitve osebe, združene v obdobja (pretekla sivo),
-   `×` obdobje odstrani. Spremembe veljajo ob shranjevanju. Osebe s prihodnjimi omejitvami imajo v tabeli ob imenu `⊘`.
+   `×` obdobje odstrani. Spremembe veljajo ob shranjevanju. Omejitve, starejše od 400 dni, se samodejno izbrišejo.
+   Osebe s prihodnjimi omejitvami imajo v tabeli ob imenu `⊘`.
    **Shrani in dodaj novo** shrani osebo in pusti okno odprto za naslednji vnos.
    **Uvozi seznam** doda več oseb naenkrat: prilepite vrstice `soba,ime` (npr. iz Excela ali CSV z glavo
    `Soba,Priimek in ime`; ločilo je lahko vejica, podpičje ali tabulator, ločena stolpca `Priimek` in `Ime` se združita).

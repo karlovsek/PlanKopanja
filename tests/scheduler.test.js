@@ -165,6 +165,16 @@
       JSON.stringify([{ from: '2026-10-31', to: '2026-11-01' }]), 'čez mesec');
     eq(S.groupDateRanges([]).length, 0, 'prazno');
   });
+  test('pruneBlockedDates odstrani le omejitve pred mejo', () => {
+    const a = { id: 'a', blockedDates: ['2025-01-01', '2026-10-01', '2026-10-12'] };
+    const b = { id: 'b' };
+    const cDates = ['2026-10-05'];
+    const cp = { id: 'c', blockedDates: cDates };
+    eq(S.pruneBlockedDates([a, b, cp], '2026-10-01'), 1, 'število odstranjenih');
+    eq(JSON.stringify(a.blockedDates), JSON.stringify(['2026-10-01', '2026-10-12']), 'datum = meja ostane');
+    assert(!('blockedDates' in b), 'oseba brez polja ostane brez');
+    assert(cp.blockedDates === cDates, 'nespremenjeno polje ostane isto');
+  });
   test('Oseba z odsotnostjo od–do v tem obdobju ni razporejena', () => {
     const p = makePersons(11);
     p[0].blockedDates = S.dateRange('2026-10-05', '2026-10-18');
@@ -263,6 +273,7 @@
     assert(current('interval').includes(`privzeto ${S.DEFAULT_INTERVAL}, najmanj 1`), 'privzeti interval');
     assert(current('rocni-popravki').includes(`Zadnjih ${Rules.UNDO_LIMIT} sprememb`), 'razveljavitve');
     assert(current('omejitve-datumov').includes(`največ ${S.MAX_ABSENCE_DAYS} dni`), 'najdaljša odsotnost');
+    assert(current('omejitve-datumov').includes(`${S.BLOCKED_KEEP_DAYS} dni`), 'čiščenje starih omejitev');
     eq(S.intervalOf({}), S.DEFAULT_INTERVAL, 'intervalOf brez vrednosti');
     eq(S.intervalOf({ intervalDays: -3 }), 1, 'intervalOf najmanj 1');
     // Število dni v besedilu (brez slovničnih oblik, ki so odvisne od števila).

@@ -1177,5 +1177,7 @@
   const wdFilter = $('#tab-persons [data-filter=weekdays]');
   WD_ORDER.forEach(w => wdFilter.appendChild(el('option', { value: w, text: WD_SHORT[w] })));
   $$('nav button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+  const cutoff = S.addDays(todayIso(), -S.BLOCKED_KEEP_DAYS);
+  if (S.pruneBlockedDates(state.persons, cutoff)) save();
   showTab(state.ui.tab || (state.corridors.length ? 'schedule' : 'corridors'));
 })();

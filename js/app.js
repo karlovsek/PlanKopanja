@@ -544,7 +544,7 @@
     noted.forEach((p, i) => { noteNo[p.id] = i + 1; });
     cal.classList.toggle('has-notes', noted.length > 0);
 
-    $('#schedule-title').textContent = `Plan kopanja – ${c.name} – ${MONTHS[m - 1]} ${y}`;
+    $('#schedule-title').textContent = `Plan kopanja – ${c.name} – ${monthName(currentMonth())}`;
     document.title = $('#schedule-title').textContent;
 
     WD_ORDER.forEach(w => cal.appendChild(el('div', { class: 'cal-head', text: WD_SHORT[w] })));
@@ -703,8 +703,15 @@
     return { serious: warnings.length - info, info };
   }
 
-  function renderWarnings(warnings, sched) {
+  function renderWarnings(analysis, sched) {
     const box = $('#schedule-warnings');
+    const order = { error: 0, warn: 1, info: 2 };
+    const warnings = analysis.slice().sort((a, b) => order[a.level] - order[b.level]);
+    // Zastarel razpored: opozorilo na vrhu seznama.
+    if (sched.stale) {
+      warnings.unshift({ level: 'warn', text: `Razpored za ${monthName(sched.stale)} je bil spremenjen po sestavi ` +
+        'tega meseca – roki na začetku meseca morda niso več pravilni. Preverite opozorila ali kliknite »Sestavi«.' });
+    }
     const n = countWarnings(warnings);
     const counts = warnings.length ? ` (${n.serious})` + (n.info ? ` · informacije (${n.info})` : '') : '';
     box.appendChild(el('h3', { text: 'Opozorila' + counts + (sched.edited ? ' – razpored je ročno popravljen' : '') }));
@@ -712,10 +719,7 @@
       box.appendChild(el('p', { class: 'hint', text: 'Ni opozoril.' }));
       return;
     }
-    const order = { error: 0, warn: 1, info: 2 };
-    box.appendChild(el('ul', {}, warnings.slice()
-      .sort((a, b) => order[a.level] - order[b.level])
-      .map(w => el('li', { class: w.level, text: w.text }))));
+    box.appendChild(el('ul', {}, warnings.map(w => el('li', { class: w.level, text: w.text }))));
   }
 
   function noteText(p) { return str(p.note).trim(); }
@@ -773,8 +777,24 @@
       .filter(Boolean).map(m => m + '.');
   }
 
+  // Sprememba tega meseca naredi kasnejše razporede hodnika zastarele (roki se računajo iz prejšnjih mesecev).
+  // Ohrani najzgodnejši mesec, ki je razpored naredil zastarelega.
+  function markLaterStale() {
+    const month = currentMonth();
+    S.laterScheduleKeys(state.schedules, currentCorridorId(), month).forEach(k => {
+      const s = state.schedules[k];
+      if (!s.stale || s.stale > month) s.stale = month;
+    });
+  }
+
+  function monthName(month) {
+    const [y, m] = month.split('-').map(Number);
+    return MONTHS[m - 1] + ' ' + y;
+  }
+
   function afterEdit(sched, msgs, okText) {
     sched.edited = true;
+    markLaterStale();
     save();
     setStatus(msgs.length ? 'Opozorilo: ' + msgs.join(' ') : okText, msgs.length ? 'warn' : 'ok');
     renderSchedule();
@@ -840,10 +860,16 @@
     if (!c) return;
     const key = currentKey();
     const old = state.schedules[key];
+    const month = currentMonth();
+    const prev = S.prevMonth(month);
+    if (!state.schedules[S.scheduleKey(c.id, prev)] && S.hasEarlierSchedule(state.schedules, c.id, month) &&
+      !confirm(`Razpored za ${monthName(prev)} ni sestavljen, zato bodo roki izračunani iz starejših podatkov ` +
+        'ali kot pri novih osebah. Vseeno sestavim?')) return;
     if (old && old.edited && !confirm('Razpored za ta mesec je bil ročno popravljen. Ga res želite na novo sestaviti (popravki se izgubijo)?')) return;
     const [y, m] = ym();
     const res = S.buildSchedule(c, state.persons, y, m, state.schedules);
     state.schedules[key] = { days: res.days, edited: false };
+    markLaterStale();
     selection = null;
     save();
     const n = countWarnings(res.warnings);
@@ -860,6 +886,7 @@
     if (!state.schedules[key]) return;
     if (!confirm('Izbrišem razpored za ta mesec?')) return;
     delete state.schedules[key];
+    markLaterStale();
     selection = null;
     save();
     setStatus('', null);

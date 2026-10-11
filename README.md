@@ -31,6 +31,9 @@ Podatki se shranjujejo v brskalnik (`localStorage`) – **redno izvozite varnost
    - Pod koledarjem so opozorila (presežena kapaciteta, zamude, nedovoljeni dnevi …) in povzetek po osebah.
      Povzetek kaže razmike med kopanji; prvi, v oklepaju, je od zadnjega kopanja v prejšnjem mesecu. Razmiki,
      daljši od intervala, so oranžni, zelo kratki pa sivi.
+   - Mesece sestavljajte po vrsti. Če razpored prejšnjega meseca manjka, aplikacija pred sestavo vpraša za
+     potrditev. Ko razpored meseca spremenite (sestava, ročni popravek, brisanje), dobijo kasnejši meseci
+     istega hodnika opozorilo, da so morda zastareli; opozorilo izgine, ko jih znova sestavite.
    - **Natisni** natisne koledar na list A4 (ležeče).
 4. **Varnostna kopija** – izvoz/uvoz vseh podatkov v datoteko JSON.
 5. **Pravila razporejanja** – podroben opis pravil sestavljanja koledarja. Pri vsakem pravilu je navedeno, od kdaj

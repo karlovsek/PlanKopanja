@@ -115,7 +115,12 @@
     { id: 'ponovna-sestava', from: START,
       text: 'Spremembe kapacitet, izjem, oseb in omejitev ne spremenijo že sestavljenega razporeda – upoštevajo se ' +
         'šele ob ponovnem kliku »Sestavi«. Izjema: izbrisana oseba se takoj odstrani iz vseh shranjenih ' +
-        'razporedov. Ročno popravljen razpored se na novo sestavi le po potrditvi (popravki se izgubijo).' }
+        'razporedov. Ročno popravljen razpored se na novo sestavi le po potrditvi (popravki se izgubijo).' },
+    { id: 'zaporedje-mesecev', from: '2026-10-12',
+      text: 'Če razpored prejšnjega meseca ni sestavljen (a hodnik ima starejše razporede), sestava meseca ' +
+        'zahteva potrditev. Ko se razpored meseca sestavi na novo, ročno popravi ali izbriše, se razporedi ' +
+        'kasnejših mesecev istega hodnika označijo kot zastareli (opozorilo); oznaka izgine ob njihovi ' +
+        'ponovni sestavi.' }
   ] }
   ];
 

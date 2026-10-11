@@ -109,6 +109,26 @@
   // Ključ shranjenega razporeda; scheduleKey(id, '') je predpona vseh razporedov hodnika.
   function scheduleKey(corridorId, month) { return corridorId + '|' + month; }
 
+  // '2026-01' → '2025-12'
+  function prevMonth(month) {
+    const [y, m] = month.split('-').map(Number);
+    return m === 1 ? monthKey(y - 1, 12) : monthKey(y, m - 1);
+  }
+  // Meseci (YYYY-MM) shranjenih razporedov hodnika.
+  function corridorMonths(schedules, corridorId) {
+    const prefix = scheduleKey(corridorId, '');
+    return Object.keys(schedules || {}).filter(k => k.indexOf(prefix) === 0).map(k => k.slice(prefix.length));
+  }
+  // Ključi razporedov hodnika za mesece, kasnejše od `month` (urejeni).
+  function laterScheduleKeys(schedules, corridorId, month) {
+    return corridorMonths(schedules, corridorId).filter(mo => mo > month).sort()
+      .map(mo => scheduleKey(corridorId, mo));
+  }
+  // Ali obstaja razpored hodnika za kak mesec pred `month`.
+  function hasEarlierSchedule(schedules, corridorId, month) {
+    return corridorMonths(schedules, corridorId).some(mo => mo < month);
+  }
+
   // Zadnje kopanje vsake osebe pred datumom `beforeIso` (iz shranjenih razporedov tega hodnika).
   // Prestara zadnja kopanja (več kot 2 × interval + 7 dni) se ne upoštevajo.
   function knownLastBaths(corridor, persons, schedules, beforeIso) {
@@ -356,7 +376,7 @@
     DEFAULT_CAPACITY, defaultCapacity, dayKind, dayInfo, capacityOn,
     personAllows, personBlocked, isAvailable, byName,
     DEFAULT_INTERVAL, intervalOf, historyLimit, pullForwardDays, shortGap, bathGaps,
-    dayIssue, personDayIssue, scheduleKey,
+    dayIssue, personDayIssue, scheduleKey, prevMonth, laterScheduleKeys, hasEarlierSchedule,
     knownLastBaths, buildSchedule, analyzeSchedule
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

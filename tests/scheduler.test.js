@@ -288,6 +288,17 @@
     ]));
     eq(S.bathGaps(p, null, []).length, 0);
   });
+  test('Zaporedje mesecev: prejšnji mesec, kasnejši in starejši razporedi', () => {
+    eq(S.prevMonth('2026-01'), '2025-12');
+    eq(S.prevMonth('2026-10'), '2026-09');
+    const sch = { 'c1|2026-09': {}, 'c1|2026-12': {}, 'c1|2026-11': {}, 'c1|2026-10': {}, 'c2|2026-11': {}, 'c10|2026-12': {} };
+    eq(JSON.stringify(S.laterScheduleKeys(sch, 'c1', '2026-10')), JSON.stringify(['c1|2026-11', 'c1|2026-12']));
+    eq(S.laterScheduleKeys(sch, 'c1', '2026-12').length, 0);
+    eq(S.hasEarlierSchedule(sch, 'c1', '2026-10'), true);
+    eq(S.hasEarlierSchedule(sch, 'c1', '2026-09'), false);
+    eq(S.hasEarlierSchedule(sch, 'c2', '2026-11'), false);
+    eq(S.hasEarlierSchedule({}, 'c1', '2026-10'), false);
+  });
   test('Pravila: validOn vključuje oba konca obdobja', () => {
     const r = { from: '2026-10-01', to: '2026-10-31' };
     eq(Rules.validOn(r, '2026-10-01'), true);

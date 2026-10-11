@@ -62,8 +62,8 @@ section, each with a validity period `{ id, from, to, text }` (`from` is require
 
 ## Conventions
 
-- Line endings are mixed and there is no `.gitattributes`: `README.md`, `index.html`, `css/style.css` and `js/app.js`
-  use **CRLF**, all other files LF. Keep each file's existing endings — edit with the Edit tool rather than `sed -i`,
-  which converts CRLF to LF.
+- Line endings: `.gitattributes` (`* text=auto eol=crlf`) stores every text file as **LF in the repo** and checks it
+  out as **CRLF in the working tree**, regardless of `core.autocrlf`. Git converts on commit, so the endings of edited
+  or new files do not matter.
 - User-facing text, comments, test names and commit messages are in Slovenian.
 - Name comparisons use `localeCompare(..., 'sl')`; person search/filter is case- and diacritic-insensitive.

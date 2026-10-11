@@ -130,6 +130,23 @@
     return res;
   }
 
+  // Razmiki med zaporednimi kopanji osebe: [{ days, fromPrev, level }]; prvi je od `prevIso` (če je podan).
+  // level: 'late' (daljši od intervala), 'short' (krajši od shortGap), null.
+  function bathGaps(person, prevIso, dates) {
+    const iv = intervalOf(person);
+    const res = [];
+    let prev = prevIso || null;
+    dates.forEach(d => {
+      if (prev) {
+        const days = diffDays(prev, d);
+        const level = days > iv ? 'late' : days < shortGap(person) ? 'short' : null;
+        res.push({ days, fromPrev: !!prevIso && !res.length, level });
+      }
+      prev = d;
+    });
+    return res;
+  }
+
   function byName(a, b) { return (a.name || '').localeCompare(b.name || '', 'sl'); }
 
   // ---------- sestava ----------
@@ -338,7 +355,7 @@
     addDays, diffDays, weekday, monthKey, monthDays, shortDate,
     DEFAULT_CAPACITY, defaultCapacity, dayKind, dayInfo, capacityOn,
     personAllows, personBlocked, isAvailable, byName,
-    DEFAULT_INTERVAL, intervalOf, historyLimit, pullForwardDays, shortGap,
+    DEFAULT_INTERVAL, intervalOf, historyLimit, pullForwardDays, shortGap, bathGaps,
     dayIssue, personDayIssue, scheduleKey,
     knownLastBaths, buildSchedule, analyzeSchedule
   };

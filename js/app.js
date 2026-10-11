@@ -623,7 +623,7 @@
 
     renderWarnings(S.analyzeSchedule(c, state.persons, y, m, sched.days, state.schedules), sched);
     renderNotes(noted, noteNo);
-    renderSummary(persons, sched.days);
+    renderSummary(c, persons, sched.days);
   }
 
   // Urejevalnik dneva: izjema (največ oseb) in osebe, ki se ta dan ne morejo kopati.
@@ -731,24 +731,37 @@
     ]))));
   }
 
-  function renderSummary(persons, days) {
+  function renderSummary(c, persons, days) {
     const box = $('#schedule-summary');
     box.appendChild(el('h3', { text: 'Povzetek' }));
+    const [y, m] = ym();
+    const last = S.knownLastBaths(c, persons, state.schedules, S.monthDays(y, m)[0]);
     const rows = persons.map(p => {
       const ds = Object.keys(days).filter(d => days[d].includes(p.id)).sort();
-      // Število dni med zaporednimi kopanji v mesecu.
-      const gaps = ds.slice(1).map((d, i) => S.diffDays(ds[i], d));
+      // Število dni med zaporednimi kopanji; prvi razmik (v oklepaju) je od kopanja v prejšnjem mesecu.
+      const gapCells = [];
+      S.bathGaps(p, last[p.id], ds).forEach((g, i) => {
+        if (i) gapCells.push(', ');
+        gapCells.push(el('span', {
+          class: g.level === 'late' ? 'gap-late' : g.level === 'short' ? 'gap-short' : '',
+          title: g.fromPrev ? 'Od zadnjega kopanja v prejšnjem mesecu (' + S.shortDate(last[p.id]) + ')' : null,
+          text: g.fromPrev ? '(' + g.days + ')' : String(g.days)
+        }));
+      });
       return el('tr', { class: p.active === false ? 'inactive' : '' }, [
         el('td', { text: p.name }),
         el('td', { text: p.room || '' }),
         el('td', { text: String(S.intervalOf(p)) }),
         el('td', { text: String(ds.length) }),
         el('td', { text: ds.map(d => S.shortDate(d)).join(', ') }),
-        el('td', { text: gaps.join(', ') })
+        el('td', {}, gapCells)
       ]);
     });
+    const gapsHint = 'V oklepaju: od zadnjega kopanja v prejšnjem mesecu. ' +
+      'Oranžno: daljši od intervala, sivo: krajši od polovice intervala.';
     box.appendChild(el('table', { class: 'list' }, [
-      el('thead', {}, [el('tr', {}, ['Ime', 'Soba', 'Interval', 'Št. kopanj', 'Datumi', 'Razmak med datumi'].map(t => el('th', { text: t })))]),
+      el('thead', {}, [el('tr', {}, ['Ime', 'Soba', 'Interval', 'Št. kopanj', 'Datumi', 'Razmak med datumi']
+        .map(t => el('th', { text: t, title: t === 'Razmak med datumi' ? gapsHint : null })))]),
       el('tbody', {}, rows)
     ]));
   }

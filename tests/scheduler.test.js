@@ -274,6 +274,20 @@
     const w2 = S.analyzeSchedule(closed, p, 2026, 10, { '2026-10-01': ['p0'] }, prev);
     assert(w2.some(x => x.level === 'info' && /vmes ni bilo dovoljenega dneva/.test(x.text)), JSON.stringify(w2));
   });
+  test('Razmiki: od prejšnjega meseca, zamude in kratki razmiki', () => {
+    const p = { id: 'p', intervalDays: 10 };
+    const dates = ['2026-10-07', '2026-10-17', '2026-10-20'];
+    eq(JSON.stringify(S.bathGaps(p, '2026-09-25', dates)), JSON.stringify([
+      { days: 12, fromPrev: true, level: 'late' },
+      { days: 10, fromPrev: false, level: null },
+      { days: 3, fromPrev: false, level: 'short' }
+    ]));
+    eq(JSON.stringify(S.bathGaps(p, null, dates)), JSON.stringify([
+      { days: 10, fromPrev: false, level: null },
+      { days: 3, fromPrev: false, level: 'short' }
+    ]));
+    eq(S.bathGaps(p, null, []).length, 0);
+  });
   test('Pravila: validOn vključuje oba konca obdobja', () => {
     const r = { from: '2026-10-01', to: '2026-10-31' };
     eq(Rules.validOn(r, '2026-10-01'), true);

@@ -98,6 +98,8 @@ table.list th { background: #f0f2f4; font-weight: 600; font-size: 0.9rem; }
 table.list td.actions { white-space: nowrap; text-align: right; }
 table.list tr.inactive td { color: var(--muted); }
 table.list .empty td { color: var(--muted); text-align: center; }
+.gap-late { color: var(--warn); font-weight: 600; }
+.gap-short { color: var(--muted); }
 th button.sort { border: 0; background: none; padding: 0; color: inherit; }
 /* Puščice so le okras (smer pove aria-sort); »/ ''« jih izpusti iz imena gumba, starejši brskalniki vzamejo prvo vrednost. */
 th button.sort::after { content: ' ↕'; content: ' ↕' / ''; color: var(--muted); opacity: 0.5; }

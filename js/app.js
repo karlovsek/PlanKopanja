@@ -12,12 +12,14 @@
   const MONTHS = ['januar', 'februar', 'marec', 'april', 'maj', 'junij', 'julij',
     'avgust', 'september', 'oktober', 'november', 'december'];
   const BACKUP_REMIND_DAYS = 7; // po toliko dneh od zadnjega izvoza se v glavi pokaže opomnik
+  const UNDO_LIMIT = Rules.UNDO_LIMIT; // število v besedilu pravila »rocni-popravki«
 
   let state = Store.load();
   let selection = null; // { date, personId } – izbran čip za premik
   let editingDay = null; // datum, za katerega je odprto urejanje izjeme
   let focusBlocked = false; // po spremembi omejitve se v urejevalniku dneva fokusira izbirnik oseb
   let personSort = { key: 'name', dir: 1 }; // razvrščanje tabele oseb (dir: 1 naraščajoče, -1 padajoče)
+  const undoStack = []; // [{ label, snapshot }] – spremembe v zavihku Razpored, samo v pomnilniku
 
   // ---------- pomožne ----------
   const $ = (sel, root) => (root || document).querySelector(sel);
@@ -110,6 +112,30 @@
   function clearScheduleInteraction() {
     selection = null;
     editingDay = null;
+  }
+
+  // Razveljavi: pred vsako spremembo v zavihku Razpored se shrani posnetek hodnikov, oseb in razporedov
+  // (brez `ui`). Ob spremembi hodnikov ali oseb drugje se sklad izbriše, da razveljavitev ne povozi teh sprememb.
+  function pushUndo(label) {
+    undoStack.push({ label, snapshot: JSON.stringify({ corridors: state.corridors, persons: state.persons, schedules: state.schedules }) });
+    if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+  }
+
+  // Shrani spremembo hodnikov ali oseb (zunaj zavihka Razpored) in izbriši zgodovino razveljavitev.
+  function saveClearUndo() {
+    undoStack.length = 0;
+    save();
+  }
+
+  function undo() {
+    const last = undoStack.pop();
+    if (!last) return false;
+    Object.assign(state, JSON.parse(last.snapshot));
+    clearScheduleInteraction();
+    save();
+    render();
+    setStatus('Razveljavljeno: ' + last.label + '.', 'ok');
+    return true;
   }
 
   // ---------- zavihki ----------
@@ -216,7 +242,7 @@
     state.persons = state.persons.filter(p => p.corridorId !== c.id);
     const prefix = S.scheduleKey(c.id, '');
     Object.keys(state.schedules).forEach(k => { if (k.indexOf(prefix) === 0) delete state.schedules[k]; });
-    save();
+    saveClearUndo();
     render();
   }
 
@@ -249,7 +275,7 @@
       state.corridors.push(c);
       state.ui.corridorId = c.id;
     }
-    save();
+    saveClearUndo();
     corridorDialog.close();
     render();
   });
@@ -396,7 +422,7 @@
     Object.values(state.schedules).forEach(s => {
       Object.keys(s.days || {}).forEach(d => { s.days[d] = s.days[d].filter(id => id !== p.id); });
     });
-    save();
+    saveClearUndo();
     render();
   }
 
@@ -429,7 +455,7 @@
     const existing = personById(f.id.value);
     if (existing) Object.assign(existing, data);
     else state.persons.push(Object.assign({ id: newId(), corridorId: cid }, data));
-    save();
+    saveClearUndo();
     render();
     if (!existing && e.submitter && e.submitter.value === 'next') {
       resetPersonForm();
@@ -502,7 +528,7 @@
       id: newId(), corridorId: cid, name: p.name, room: p.room, note: p.note,
       intervalDays: S.DEFAULT_INTERVAL, allowedWeekdays: [], active: true
     }));
-    save();
+    saveClearUndo();
     importDialog.close();
     render();
     showStatus($('#persons-status'), 'Uvoženih oseb: ' + fresh.length + '.', 'ok');
@@ -541,6 +567,10 @@
   function renderSchedule() {
     const cid = currentCorridorId();
     const c = corridorById(cid);
+    const undoBtn = $('#btn-undo');
+    const lastUndo = undoStack[undoStack.length - 1];
+    undoBtn.disabled = !lastUndo;
+    undoBtn.title = lastUndo ? 'Razveljavi: ' + lastUndo.label : '';
     $('#schedule-month').value = currentMonth();
     const cal = $('#calendar');
     cal.innerHTML = '';
@@ -692,6 +722,7 @@
 
   // Omejitev osebe na dan `d`; urejevalnik dneva ostane odprt.
   function setBlocked(d, p, on) {
+    pushUndo('omejitev');
     const dates = new Set(p.blockedDates || []);
     if (on) dates.add(d); else dates.delete(d);
     p.blockedDates = Array.from(dates).sort();
@@ -707,6 +738,9 @@
   }
 
   function setOverride(c, d, n) {
+    const old = (c.dayOverrides || {})[d];
+    if ((old == null ? null : old) === n) { editingDay = null; renderSchedule(); return; }
+    pushUndo('izjema');
     c.dayOverrides = c.dayOverrides || {};
     if (n == null) delete c.dayOverrides[d]; else c.dayOverrides[d] = n;
     editingDay = null;
@@ -839,6 +873,7 @@
       renderSchedule();
       return;
     }
+    pushUndo('premik');
     sched.days[from] = (sched.days[from] || []).filter(id => id !== personId);
     sched.days[d] = target.concat(personId);
     const p = personById(personId);
@@ -847,6 +882,7 @@
   }
 
   function removePerson(d, id) {
+    pushUndo('odstranitev');
     const sched = ensureSchedule();
     sched.days[d] = (sched.days[d] || []).filter(x => x !== id);
     if (selection && selection.personId === id) selection = null;
@@ -865,6 +901,7 @@
       }))));
     sel.addEventListener('change', () => {
       if (!sel.value) return;
+      pushUndo('dodajanje');
       const sched = ensureSchedule();
       sched.days[d] = (sched.days[d] || []).concat(sel.value);
       const p = personById(sel.value);
@@ -887,6 +924,7 @@
       !confirm(`Razpored za ${monthName(prev)} ni sestavljen, zato bodo roki izračunani iz starejših podatkov ` +
         'ali kot pri novih osebah. Vseeno sestavim?')) return;
     if (old && old.edited && !confirm('Razpored za ta mesec je bil ročno popravljen. Ga res želite na novo sestaviti (popravki se izgubijo)?')) return;
+    pushUndo('sestava');
     const [y, m] = ym();
     const res = S.buildSchedule(c, state.persons, y, m, state.schedules);
     state.schedules[key] = { days: res.days, edited: false };
@@ -906,6 +944,7 @@
     const key = currentKey();
     if (!state.schedules[key]) return;
     if (!confirm('Izbrišem razpored za ta mesec?')) return;
+    pushUndo('brisanje razporeda');
     delete state.schedules[key];
     markLaterStale();
     selection = null;
@@ -939,11 +978,19 @@
     render();
   }));
 
+  $('#btn-undo').addEventListener('click', undo);
+
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && (selection || editingDay)) {
       clearScheduleInteraction();
       setStatus('', null);
       renderSchedule();
+    }
+    // Ctrl+Z samo v zavihku Razpored in ne med vnosom v polje (tam ostane običajna razveljavitev besedila).
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'z' &&
+      state.ui.tab === 'schedule' && !e.target.closest('input, textarea, select') &&
+      !document.querySelector('dialog[open]')) {
+      if (undo()) e.preventDefault();
     }
   });
 
@@ -1030,7 +1077,7 @@
       if (!confirm(`Uvozim ${data.corridors.length} hodnikov in ${data.persons.length} oseb? Trenutni podatki bodo prepisani.`)) return;
       data.ui = Object.assign({}, data.ui, { tab: 'backup' });
       state = data;
-      save();
+      saveClearUndo();
       render();
       importStatus('Podatki uvoženi.', 'ok');
     }).catch(err => importStatus(err.message, 'error'))
@@ -1041,7 +1088,7 @@
     if (!confirm('Res izbrišem VSE podatke (hodnike, osebe, razporede)? Tega ni mogoče razveljaviti.')) return;
     state = Store.empty();
     state.ui.tab = 'backup';
-    save();
+    saveClearUndo();
     render();
   });
 

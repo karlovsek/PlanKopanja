@@ -240,6 +240,7 @@
     assert(current('privzeta-kapaciteta').includes(`delavnik ${c.weekday}, sobota ${c.saturday}, nedelja/praznik ${c.sundayHoliday}`),
       'privzeta kapaciteta');
     assert(current('interval').includes(`privzeto ${S.DEFAULT_INTERVAL}, najmanj 1`), 'privzeti interval');
+    assert(current('rocni-popravki').includes(`Zadnjih ${Rules.UNDO_LIMIT} sprememb`), 'razveljavitve');
     eq(S.intervalOf({}), S.DEFAULT_INTERVAL, 'intervalOf brez vrednosti');
     eq(S.intervalOf({ intervalDays: -3 }), 1, 'intervalOf najmanj 1');
     // Število dni v besedilu (brez slovničnih oblik, ki so odvisne od števila).

@@ -23,6 +23,7 @@ Podatki se shranjujejo v brskalnik (`localStorage`) – **redno izvozite varnost
    (iskanje ne loči velikih črk in šumnikov, npr. `zupancic` najde »ŽUPANČIČ«).
 3. **Razpored** – izberite hodnik in mesec ter kliknite **Sestavi**.
    - Ročni popravki: klik na ime ga izbere (obarvajo se tudi vsi ostali termini te osebe v mesecu), klik na drug dan ga premakne; `×` odstrani; `+` doda osebo.
+     **Razveljavi** (ali Ctrl+Z) prekliče zadnje spremembe v koledarju (do 20).
    - `✎` na dnevu nastavi izjemo (največ oseb ta dan); »Privzeto« izjemo odstrani. Dnevi z izjemo imajo črtkan rob.
      V istem urejevalniku pod »Se ne more kopati:« izberete osebe, ki se ta dan ne morejo kopati (npr. pregled,
      obisk); `×` omejitev odstrani. Osebe z omejitvijo so v celici dneva izpisane za znakom `⊘` (ne natisnejo se).

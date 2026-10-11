@@ -7,6 +7,7 @@
   'use strict';
 
   const START = '2026-10-07'; // začetek zgodovine pravil
+  const UNDO_LIMIT = 20; // največ korakov razveljavitve v zavihku Razpored (uporablja app.js)
 
   const GROUPS = [
   { section: 'Dnevi in kapaciteta', rules: [
@@ -108,10 +109,16 @@
         'dovoljenim dnem tega meseca, oseba pa do konca meseca ni več razporejena.' }
   ] },
   { section: 'Ročni popravki', rules: [
-    { id: 'rocni-popravki', from: START,
+    { id: 'rocni-popravki', from: START, to: '2026-10-11',
       text: 'Razpored lahko ročno popravimo: klik na ime ga izbere, klik na drug dan ga premakne, × ga odstrani, ' +
         '+ doda osebo. Popravki niso blokirani; težave (npr. presežena kapaciteta, nedovoljen dan) se izpišejo ' +
         'kot opozorilo in v seznamu opozoril.' },
+    { id: 'rocni-popravki', from: '2026-10-12',
+      text: 'Razpored lahko ročno popravimo: klik na ime ga izbere, klik na drug dan ga premakne, × ga odstrani, ' +
+        '+ doda osebo. Popravki niso blokirani; težave (npr. presežena kapaciteta, nedovoljen dan) se izpišejo ' +
+        'kot opozorilo in v seznamu opozoril. Zadnjih 20 sprememb v zavihku Razpored (premiki, dodajanja, ' +
+        'odstranitve, izjeme, omejitve, sestava, brisanje) lahko razveljavimo z gumbom »Razveljavi« ali Ctrl+Z; ' +
+        'ob spremembi hodnikov ali oseb se zgodovina razveljavitev izbriše.' },
     { id: 'ponovna-sestava', from: START,
       text: 'Spremembe kapacitet, izjem, oseb in omejitev ne spremenijo že sestavljenega razporeda – upoštevajo se ' +
         'šele ob ponovnem kliku »Sestavi«. Izjema: izbrisana oseba se takoj odstrani iz vseh shranjenih ' +
@@ -131,7 +138,7 @@
   // Ali pravilo velja na dan `iso` (oba konca obdobja sta vključena).
   function validOn(rule, iso) { return rule.from <= iso && (!rule.to || iso <= rule.to); }
 
-  const api = { START, SECTIONS, RULES, validOn };
+  const api = { START, UNDO_LIMIT, SECTIONS, RULES, validOn };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.KSRules = api;
 })(this);

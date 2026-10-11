@@ -54,6 +54,8 @@ section, each with a validity period `{ id, from, to, text }` (`from` is require
   applied) and add a new entry with the same `id` and `from` = the next day; a new rule gets `from` = today.
 - Never delete or rewrite entries to change what a rule *was* — they are the history users see. Exception: a text
   that never matched the code may be corrected in place (it is a documentation fix, not a rule change).
+- Rule history starts at `START` (2026-10-07); earlier entries were dropped once, before the app was first used in
+  production. From then on, entries are never deleted.
 - Tests check current texts against the code (`DEFAULT_CAPACITY`, `DEFAULT_INTERVAL`, `LOOKAHEAD_DAYS`,
   `historyLimit`, `pullForwardDays`, `shortGap`, holiday names) and that versions of one `id` follow each other
   without gaps. Keep numbers in rule texts tied to these named helpers rather than inline literals in `scheduler.js`.

@@ -11,6 +11,7 @@
   const WD_SHORT = ['Ned', 'Pon', 'Tor', 'Sre', 'Čet', 'Pet', 'Sob'];
   const MONTHS = ['januar', 'februar', 'marec', 'april', 'maj', 'junij', 'julij',
     'avgust', 'september', 'oktober', 'november', 'december'];
+  const BACKUP_REMIND_DAYS = 7; // po toliko dneh od zadnjega izvoza se v glavi pokaže opomnik
 
   let state = Store.load();
   let selection = null; // { date, personId } – izbran čip za premik
@@ -55,6 +56,11 @@
   function personLabel(p) { return p.name + (p.room ? ' (' + p.room + ')' : ''); }
 
   function fmtDate(iso) { return S.shortDate(iso) + ' ' + iso.slice(0, 4); }
+  // Lokalni datum in čas, npr. »12. 10. 2026 ob 14:05«.
+  function fmtDateTime(d) {
+    return `${d.getDate()}. ${d.getMonth() + 1}. ${d.getFullYear()} ob ${d.getHours()}:` +
+      String(d.getMinutes()).padStart(2, '0');
+  }
 
   // "2026-12-24", "24.12.2026", "24. 12. 2026" → ISO ali null
   function parseDate(s) {
@@ -125,6 +131,21 @@
     else if (tab === 'schedule') renderSchedule();
     else if (tab === 'backup') renderBackup();
     else if (tab === 'rules') renderRules();
+    renderBackupReminder();
+  }
+
+  // Opomnik v glavi: varnostna kopija še ni bila izvožena ali je starejša od BACKUP_REMIND_DAYS dni.
+  function renderBackupReminder() {
+    const btn = $('#backup-reminder');
+    const last = state.ui.lastExport ? new Date(state.ui.lastExport) : null;
+    const days = last ? Math.floor((Date.now() - last.getTime()) / 86400000) : null;
+    let text = '';
+    if (state.corridors.length) {
+      if (!last) text = 'Varnostna kopija še ni bila izvožena';
+      else if (days >= BACKUP_REMIND_DAYS) text = 'Od zadnje varnostne kopije: ' + S.nDays(days);
+    }
+    btn.textContent = text;
+    btn.hidden = !text;
   }
 
   // Pojavno okno z obrazcem: ob vsakem odprtju prazno (nov vnos) ali izpolnjeno z `item` (urejanje).
@@ -897,9 +918,7 @@
   // V desni kot naslova se vpiše čas tiskanja.
   window.addEventListener('beforeprint', () => {
     if (selection) { selection = null; renderSchedule(); }
-    const d = new Date();
-    const hm = d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0');
-    $('#print-time').textContent = `Natisnjeno: ${d.getDate()}. ${d.getMonth() + 1}. ${d.getFullYear()} ob ${hm}`;
+    $('#print-time').textContent = 'Natisnjeno: ' + fmtDateTime(new Date());
   });
   $('#btn-print').addEventListener('click', () => window.print());
 
@@ -931,7 +950,13 @@
   // ---------- VARNOSTNA KOPIJA ----------
   function renderBackup() {
     $('#backup-info').textContent = `Trenutno shranjeno – hodniki: ${state.corridors.length}, ` +
-      `osebe: ${state.persons.length}, mesečni razporedi: ${Object.keys(state.schedules).length}.`;
+      `osebe: ${state.persons.length}, mesečni razporedi: ${Object.keys(state.schedules).length}. ` +
+      lastExportText();
+  }
+
+  function lastExportText() {
+    if (!state.ui.lastExport) return 'Podatki še niso bili izvoženi.';
+    return 'Zadnji izvoz: ' + fmtDateTime(new Date(state.ui.lastExport)) + '.';
   }
 
   // ---------- PRAVILA RAZPOREJANJA ----------
@@ -988,7 +1013,15 @@
 
   function importStatus(text, level) { showStatus($('#import-status'), text, level); }
 
-  $('#btn-export').addEventListener('click', () => Store.exportJSON(state));
+  // Čas izvoza se zapiše pred izvozom, da je tudi v izvoženi datoteki.
+  $('#btn-export').addEventListener('click', () => {
+    state.ui.lastExport = new Date().toISOString();
+    save();
+    Store.exportJSON(state);
+    renderBackupReminder();
+    renderBackup();
+  });
+  $('#backup-reminder').addEventListener('click', () => showTab('backup'));
 
   $('#import-file').addEventListener('change', e => {
     const file = e.target.files[0];

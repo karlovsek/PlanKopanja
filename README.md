@@ -35,7 +35,8 @@ Podatki se shranjujejo v brskalnik (`localStorage`) – **redno izvozite varnost
      potrditev. Ko razpored meseca spremenite (sestava, ročni popravek, brisanje), dobijo kasnejši meseci
      istega hodnika opozorilo, da so morda zastareli; opozorilo izgine, ko jih znova sestavite.
    - **Natisni** natisne koledar na list A4 (ležeče).
-4. **Varnostna kopija** – izvoz/uvoz vseh podatkov v datoteko JSON.
+4. **Varnostna kopija** – izvoz/uvoz vseh podatkov v datoteko JSON. Če varnostna kopija še ni bila izvožena ali je
+   od zadnjega izvoza minilo vsaj 7 dni, se v glavi aplikacije pokaže opomnik (klik nanj odpre ta zavihek).
 5. **Pravila razporejanja** – podroben opis pravil sestavljanja koledarja. Pri vsakem pravilu je navedeno, od kdaj
    velja; z izbiro datuma se prikažejo pravila, ki so veljala tisti dan, pravila, ki ne veljajo več, pa so spodaj
    z obdobjem veljavnosti.

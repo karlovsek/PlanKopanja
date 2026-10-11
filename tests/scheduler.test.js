@@ -299,6 +299,13 @@
     eq(S.hasEarlierSchedule(sch, 'c2', '2026-11'), false);
     eq(S.hasEarlierSchedule({}, 'c1', '2026-10'), false);
   });
+  test('Dnevi: pravilna slovnična oblika', () => {
+    eq(S.nDays(1), '1 dan');
+    eq(S.nDays(2), '2 dneva');
+    eq(S.nDays(3), '3 dnevi');
+    eq(S.nDays(5), '5 dni');
+    eq(S.nDays(101), '101 dan');
+  });
   test('Pravila: validOn vključuje oba konca obdobja', () => {
     const r = { from: '2026-10-01', to: '2026-10-31' };
     eq(Rules.validOn(r, '2026-10-01'), true);

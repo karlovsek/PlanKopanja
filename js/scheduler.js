@@ -372,7 +372,7 @@
 
   const api = {
     WEEKDAY_NAMES, LOOKAHEAD_DAYS,
-    addDays, diffDays, weekday, monthKey, monthDays, shortDate,
+    addDays, diffDays, weekday, monthKey, monthDays, shortDate, nDays,
     DEFAULT_CAPACITY, defaultCapacity, dayKind, dayInfo, capacityOn,
     personAllows, personBlocked, isAvailable, byName,
     DEFAULT_INTERVAL, intervalOf, historyLimit, pullForwardDays, shortGap, bathGaps,

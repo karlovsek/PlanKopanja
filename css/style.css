@@ -43,6 +43,18 @@ nav button {
 }
 nav button:hover { background: #32383f; color: #fff; }
 nav button.active { background: #fff; color: #24292f; font-weight: 600; }
+.backup-reminder {
+  margin-left: auto;
+  background: #fff4e5;
+  color: var(--warn);
+  border: 0;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.backup-reminder[hidden] { display: none; }
 
 main { padding: 1rem 1.5rem 3rem; max-width: 1400px; margin: 0 auto; }
 h2 { margin: 0.5rem 0 1rem; }

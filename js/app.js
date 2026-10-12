@@ -15,7 +15,7 @@
   const UNDO_LIMIT = Rules.UNDO_LIMIT; // število v besedilu pravila »rocni-popravki«
 
   let state = Store.load();
-  let selection = null; // { date, personId } – izbran čip za premik
+  let selection = null; // { date, personId } – izbrana ploščica za premik
   let highlight = null; // { personId, date } – označeno iz opozorila
   let editingDay = null; // datum, za katerega je odprto urejanje izjeme
   let formBlocked = new Set(); // delovna kopija omejitev odprtega obrazca osebe (zapiše se ob shranjevanju)
@@ -114,13 +114,13 @@
     });
   }
 
-  // Izbran čip, označba iz opozorila in odprto urejanje izjeme veljajo samo, dokler je odprt koledar.
+  // Izbrana ploščica, označba iz opozorila in odprto urejanje izjeme veljajo samo, dokler je odprt koledar.
   function clearScheduleInteraction() {
     clearMark();
     editingDay = null;
   }
 
-  // Izbran čip in označba iz opozorila (nastavljena je največ ena od njiju).
+  // Izbrana ploščica in označba iz opozorila (nastavljena je največ ena od njiju).
   function clearMark() {
     selection = null;
     highlight = null;
@@ -743,7 +743,7 @@
         ])
       ]);
       ids.forEach(id => {
-        // Premeščena oseba: posivljen čip brez urejanja.
+        // Premeščena oseba: posivljena ploščica brez urejanja.
         if (!byId[id]) {
           const p = personById(id);
           cell.appendChild(el('div', {
@@ -754,7 +754,7 @@
         }
         const p = byId[id];
         const chipCls = ['chip'];
-        // Izbran čip; ostali termini iste osebe v mesecu so označeni drugače.
+        // Izbrana ploščica; ostali termini iste osebe v mesecu so označeni drugače.
         if (mark && mark.personId === id) chipCls.push(mark.date === d ? 'selected' : 'same-person');
         if (!S.personAllows(p, d) || !info.valid) chipCls.push('bad');
         const lk = S.isLocked(sched, d, id);
@@ -770,10 +770,7 @@
             title: lk ? 'Odkleni termin' : 'Zakleni termin (ohrani se ob ponovni sestavi)',
             onclick: ev => { ev.stopPropagation(); toggleLock(d, id); }
           }),
-          el('button', {
-            type: 'button', class: 'x', title: 'Odstrani', text: '×',
-            onclick: ev => { ev.stopPropagation(); removePerson(d, id); }
-          })
+          chipRemove('Odstrani', () => removePerson(d, id))
         ]));
       });
       // Osebe z omejitvijo (se ta dan ne morejo kopati).
@@ -783,11 +780,8 @@
           class: 'chip blocked no-print', title: 'Se ne more kopati',
           onclick: ev => ev.stopPropagation()
         }, [
-          el('span', {}, ['⊘ ', chipLabel(p)]),
-          el('button', {
-            type: 'button', class: 'x', title: 'Odstrani omejitev', text: '×',
-            onclick: ev => { ev.stopPropagation(); setBlocked(d, p, false); }
-          })
+          chipLabel(p),
+          chipRemove('Odstrani omejitev', () => setBlocked(d, p, false))
         ]));
       });
       if (editingDay === d) cell.appendChild(capacityEditor(c, d, info));
@@ -950,13 +944,21 @@
   function noteText(p) { return str(p.note).trim(); }
   function noteRef(n) { return el('sup', { class: 'note-ref', text: String(n) }); }
 
-  // Besedilo čipa v koledarju: ime, soba in (neobvezno) številka opombe.
+  // Besedilo ploščice v koledarju: ime, soba in (neobvezno) številka opombe.
   function chipLabel(p, noteNo) {
     return el('span', {}, [
       p.name,
       p.room ? el('span', { class: 'room', text: ' (' + p.room + ')' }) : null,
       noteNo ? noteRef(noteNo) : null
     ]);
+  }
+
+  // Gumb × na ploščici v koledarju.
+  function chipRemove(title, onRemove) {
+    return el('button', {
+      type: 'button', class: 'x', title, text: '×',
+      onclick: ev => { ev.stopPropagation(); onRemove(); }
+    });
   }
 
   // Legenda opomb pod koledarjem (natisne se skupaj z njim); številke so iste kot ob imenih v koledarju.
@@ -1109,7 +1111,8 @@
 
   // Izbirnik osebe namesto gumba; zapre se po izbiri, ob izgubi fokusa ali z Escape.
   function showPersonSelect(btn, options, optionText, label, onPick) {
-    const sel = el('select', { 'aria-label': label, onclick: ev => ev.stopPropagation() }, [el('option', { value: '', text: '— dodaj osebo —' })]
+    const sel = el('select', { 'aria-label': label, onclick: ev => ev.stopPropagation() },
+      [el('option', { value: '', text: '— ' + label.toLowerCase() + ' —' })]
       .concat(options.map(p => el('option', { value: p.id, text: optionText(p) }))));
     sel.addEventListener('change', () => { if (sel.value) onPick(personById(sel.value)); });
     sel.addEventListener('keydown', ev => { if (ev.key === 'Escape') { ev.stopPropagation(); renderSchedule(); } });
@@ -1168,7 +1171,7 @@
     renderSchedule();
   });
 
-  // Izbran čip (in z njim označeni termini ter cilji premika) in označba iz opozorila se ne natisneta – tudi pri
+  // Izbrana ploščica (in z njo označeni termini ter cilji premika) in označba iz opozorila se ne natisneta – tudi pri
   // tiskanju s Ctrl+P.
   // V desni kot naslova se vpiše čas tiskanja.
   window.addEventListener('beforeprint', () => {

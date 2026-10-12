@@ -33,13 +33,13 @@ Podatki se shranjujejo v brskalnik (`localStorage`) – **redno izvozite varnost
      roki se izračunajo tudi iz njih. Če je izbran tekoči mesec, je privzeto jutri (npr. nova oseba sredi meseca),
      sicer prvi dan meseca; prvi dan ali prazno polje = cel mesec.
    - Ročni popravki: klik na ime ga izbere (obarvajo se tudi vsi ostali termini te osebe v mesecu), klik na drug dan ga premakne; `×` odstrani; `+` doda osebo.
-     `🔒` na imenu (viden ob premiku miške ali na izbranem čipu) termin zaklene: ob **Sestavi** ostane na mestu,
+     `🔒` na imenu (viden ob premiku miške ali na izbrani ploščici) termin zaklene: ob **Sestavi** ostane na mestu,
      ostali termini se razporedijo okoli njega. Zaklep se premakne skupaj s terminom, ne natisne se.
      **Razveljavi** (ali Ctrl+Z) prekliče zadnje spremembe v koledarju (do 20); pri tem se prikaže hodnik in mesec razveljavljene spremembe.
    - `✎` na dnevu nastavi izjemo (največ oseb ta dan); »Privzeto« izjemo odstrani. Dnevi z izjemo imajo črtkan rob.
    - `−` v spodnjem desnem kotu dneva odpre izbirnik (kot `+`): izbrana oseba se ta dan ne more kopati (npr. pregled,
-     obisk) in dobi v celici rdeč čip `⊘ Ime`; `×` na čipu omejitev odstrani. Spremembe se shranijo takoj, čipi omejitev
-     se ne natisnejo. Omejitve so vidne in urejene tudi v obrazcu osebe.
+     obisk) in dobi v celici rdečo ploščico `⊘ Ime`; `×` na ploščici omejitev odstrani. Spremembe se shranijo takoj,
+     ploščice omejitev se ne natisnejo. Omejitve so vidne in urejene tudi v obrazcu osebe.
      Po spremembi izjem ali omejitev kliknite **Sestavi**, da se razpored ponovno sestavi.
    - Opombe oseb so ob imenu označene s številko, besedilo opomb je pod koledarjem (tudi na natisu).
    - Pod koledarjem so opozorila (presežena kapaciteta, zamude, nedovoljeni dnevi …) in povzetek po osebah;

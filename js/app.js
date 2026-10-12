@@ -1119,6 +1119,8 @@
     sel.addEventListener('blur', () => setTimeout(() => { if (sel.isConnected) renderSchedule(); }, 150));
     btn.replaceWith(sel);
     sel.focus();
+    // Seznam se odpre takoj (klik na gumb je uporabnikovo dejanje); brskalnik brez showPicker pusti zaprt izbirnik.
+    try { if (sel.showPicker) sel.showPicker(); } catch (e) { /* ni podprto – ostane fokusiran izbirnik */ }
   }
 
   $('#btn-build').addEventListener('click', () => {

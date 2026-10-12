@@ -138,11 +138,14 @@
   // Ključ shranjenega razporeda; scheduleKey(id, '') je predpona vseh razporedov hodnika.
   function scheduleKey(corridorId, month) { return corridorId + '|' + month; }
 
-  // '2026-01' → '2025-12'
-  function prevMonth(month) {
+  // ('2026-12', 1) → '2027-01'; n je lahko negativen.
+  function addMonths(month, n) {
     const [y, m] = month.split('-').map(Number);
-    return m === 1 ? monthKey(y - 1, 12) : monthKey(y, m - 1);
+    const idx = y * 12 + (m - 1) + n;
+    return monthKey(Math.floor(idx / 12), idx % 12 + 1);
   }
+  // '2026-01' → '2025-12'
+  function prevMonth(month) { return addMonths(month, -1); }
   // Meseci (YYYY-MM) shranjenih razporedov hodnika.
   function corridorMonths(schedules, corridorId) {
     const prefix = scheduleKey(corridorId, '');
@@ -494,7 +497,7 @@
     DEFAULT_CAPACITY, defaultCapacity, dayKind, dayInfo, capacityOn,
     personAllows, personBlocked, isAvailable, byName,
     DEFAULT_INTERVAL, intervalOf, historyLimit, pullForwardDays, shortGap, bathGaps,
-    dayIssue, personDayIssue, scheduleKey, prevMonth, laterScheduleKeys, hasEarlierSchedule,
+    dayIssue, personDayIssue, scheduleKey, addMonths, prevMonth,laterScheduleKeys, hasEarlierSchedule,
     knownLastBaths, removeFutureBaths, isLocked, setLocked, unschedule, buildStart, buildSchedule, defaultBuildFrom, analyzeSchedule
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

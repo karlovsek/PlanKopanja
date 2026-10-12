@@ -683,8 +683,9 @@
     const lastUndo = undoStack[undoStack.length - 1];
     undoBtn.disabled = !lastUndo;
     undoBtn.title = lastUndo ? 'Razveljavi: ' + lastUndo.label : '';
-    $('#schedule-month').value = currentMonth();
     const [y, m] = ym();
+    $('#schedule-month').value = currentMonth().slice(5);
+    $('#schedule-year').value = y;
     const dates = S.monthDays(y, m);
     const fromInput = $('#build-from');
     fromInput.min = dates[0];
@@ -1165,14 +1166,27 @@
     state.ui.buildFrom = { key: currentKey(), value: e.target.value };
     save();
   });
-  $('#schedule-month').addEventListener('change', e => {
-    if (!e.target.value) return;
-    state.ui.month = e.target.value;
+  function selectMonth(month) {
+    state.ui.month = month;
     clearScheduleInteraction();
     setStatus('', null);
     save();
     renderSchedule();
+  }
+  MONTHS.forEach((name, i) => {
+    const mm = String(i + 1).padStart(2, '0');
+    $('#schedule-month').add(new Option(name.charAt(0).toUpperCase() + name.slice(1), mm));
   });
+  // Ob neveljavnem letu renderSchedule() vrne prikaz na trenutni mesec.
+  function onMonthPickerChange() {
+    const year = Number($('#schedule-year').value);
+    if (!Number.isInteger(year) || year < 2000 || year > 2100) { renderSchedule(); return; }
+    selectMonth(year + '-' + $('#schedule-month').value);
+  }
+  $('#schedule-month').addEventListener('change', onMonthPickerChange);
+  $('#schedule-year').addEventListener('change', onMonthPickerChange);
+  $('#month-prev').addEventListener('click', () => selectMonth(S.addMonths(currentMonth(), -1)));
+  $('#month-next').addEventListener('click', () => selectMonth(S.addMonths(currentMonth(), 1)));
 
   $$('.corridor-select').forEach(sel => sel.addEventListener('change', e => {
     state.ui.corridorId = e.target.value;

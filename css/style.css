@@ -100,7 +100,9 @@ legend { padding: 0 0.3rem; }
 .weekdays { display: flex; gap: 0.9rem; flex-wrap: wrap; }
 .weekdays label { display: inline-flex; align-items: center; gap: 0.3rem; margin: 0; }
 .buttons { display: flex; gap: 0.5rem; }
-label.inline { display: inline-flex; align-items: center; gap: 0.4rem; margin-right: 1rem; }
+label.inline, .month-picker { display: inline-flex; align-items: center; gap: 0.4rem; margin-right: 1rem; }
+.month-picker input[type=number] { width: 5em; }
+.month-picker button { padding: 0.2rem 0.5rem; }
 .hint { color: var(--muted); font-size: 0.9rem; }
 .form-error { color: var(--error); }
 

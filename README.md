@@ -28,7 +28,7 @@ Podatki se shranjujejo v brskalnik (`localStorage`) – **redno izvozite varnost
    Osebe, ki na hodniku že obstajajo, se preskočijo; predogled pokaže število novih oseb in prvo med njimi.
    Klik na glavo stolpca tabelo razvrsti (ponovni klik obrne vrstni red), polja pod glavo jo filtrirajo
    (iskanje ne loči velikih črk in šumnikov, npr. `zupancic` najde »ŽUPANČIČ«).
-3. **Razpored** – izberite hodnik in mesec ter kliknite **Sestavi**.
+3. **Razpored** – izberite hodnik in mesec (‹ › premakneta za en mesec) ter kliknite **Sestavi**.
    - Polje »od« ob **Sestavi**: sestavi se le od izbranega dne naprej, dnevi pred njim (tudi ročni popravki) ostanejo,
      roki se izračunajo tudi iz njih. Če je izbran tekoči mesec, je privzeto jutri (npr. nova oseba sredi meseca);
      prazno polje = cel mesec.

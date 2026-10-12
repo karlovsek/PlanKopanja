@@ -165,7 +165,12 @@
     <section id="tab-schedule" class="tab" hidden>
       <div class="controls no-print">
         <label class="inline">Hodnik <select id="schedule-corridor" class="corridor-select"></select></label>
-        <label class="inline">Mesec <input type="month" id="schedule-month"></label>
+        <span class="inline month-picker">Mesec
+          <button type="button" id="month-prev" title="Prejšnji mesec" aria-label="Prejšnji mesec">‹</button>
+          <select id="schedule-month" aria-label="Mesec"></select>
+          <input type="number" id="schedule-year" min="2000" max="2100" step="1" aria-label="Leto">
+          <button type="button" id="month-next" title="Naslednji mesec" aria-label="Naslednji mesec">›</button>
+        </span>
         <button type="button" id="btn-build" class="primary">Sestavi</button>
         <label class="inline" title="Dnevi pred tem datumom ostanejo nespremenjeni">od <input type="date" id="build-from"></label>
         <button type="button" id="btn-print">Natisni</button>

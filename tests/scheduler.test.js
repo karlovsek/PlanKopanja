@@ -436,6 +436,11 @@
   test('Zaporedje mesecev: prejšnji mesec, kasnejši in starejši razporedi', () => {
     eq(S.prevMonth('2026-01'), '2025-12');
     eq(S.prevMonth('2026-10'), '2026-09');
+    eq(S.addMonths('2026-12', 1), '2027-01');
+    eq(S.addMonths('2026-01', -1), '2025-12');
+    eq(S.addMonths('2026-10', 0), '2026-10');
+    eq(S.addMonths('2026-03', 14), '2027-05');
+    eq(S.addMonths('2026-03', -15), '2024-12');
     const sch = { 'c1|2026-09': {}, 'c1|2026-12': {}, 'c1|2026-11': {}, 'c1|2026-10': {}, 'c2|2026-11': {}, 'c10|2026-12': {} };
     eq(JSON.stringify(S.laterScheduleKeys(sch, 'c1', '2026-10')), JSON.stringify(['c1|2026-11', 'c1|2026-12']));
     eq(S.laterScheduleKeys(sch, 'c1', '2026-12').length, 0);

@@ -16,6 +16,7 @@
 
   let state = Store.load();
   let selection = null; // { date, personId } – izbran čip za premik
+  let highlight = null; // { personId, date } – označeno iz opozorila
   let editingDay = null; // datum, za katerega je odprto urejanje izjeme
   let focusBlocked = false; // po spremembi omejitve se v urejevalniku dneva fokusira izbirnik oseb
   let formBlocked = new Set(); // delovna kopija omejitev odprtega obrazca osebe (zapiše se ob shranjevanju)
@@ -114,10 +115,16 @@
     });
   }
 
-  // Izbran čip in odprto urejanje izjeme veljata samo, dokler je odprt koledar.
+  // Izbran čip, označba iz opozorila in odprto urejanje izjeme veljajo samo, dokler je odprt koledar.
   function clearScheduleInteraction() {
-    selection = null;
+    clearMark();
     editingDay = null;
+  }
+
+  // Izbran čip in označba iz opozorila (nastavljena je največ ena od njiju).
+  function clearMark() {
+    selection = null;
+    highlight = null;
   }
 
   // Razveljavi: pred vsako spremembo v zavihku Razpored se shrani posnetek hodnikov, oseb in razporedov
@@ -697,6 +704,7 @@
 
     WD_ORDER.forEach(w => cal.appendChild(el('div', { class: 'cal-head', text: WD_SHORT[w] })));
     const dates = S.monthDays(y, m);
+    const mark = selection || highlight;
     for (let i = 0; i < (S.weekday(dates[0]) + 6) % 7; i++) cal.appendChild(el('div', { class: 'day blank' }));
 
     dates.forEach(d => {
@@ -709,6 +717,7 @@
       if (info.override) cls.push('override');
       if (info.valid && ids.length > cap) cls.push('over');
       if (selection && selection.date !== d) cls.push('drop-target');
+      if (highlight && highlight.date === d) cls.push('highlight');
       let note = info.valid ? (info.holiday || '') : info.reason;
       if (info.valid && info.override) note = 'Izjema' + (info.holiday ? ' (' + info.holiday + ')' : '');
       const cell = el('div', { class: cls.join(' '), dataset: { date: d }, onclick: () => onDayClick(d) }, [
@@ -734,7 +743,7 @@
         const p = byId[id];
         const chipCls = ['chip'];
         // Izbran čip; ostali termini iste osebe v mesecu so označeni drugače.
-        if (selection && selection.personId === id) chipCls.push(selection.date === d ? 'selected' : 'same-person');
+        if (mark && mark.personId === id) chipCls.push(mark.date === d ? 'selected' : 'same-person');
         if (!S.personAllows(p, d) || !info.valid) chipCls.push('bad');
         cell.appendChild(el('div', {
           class: chipCls.join(' '),
@@ -877,7 +886,43 @@
       box.appendChild(el('p', { class: 'hint', text: 'Ni opozoril.' }));
       return;
     }
-    box.appendChild(el('ul', {}, warnings.map(w => el('li', { class: w.level, text: w.text }))));
+    box.appendChild(el('ul', {}, warnings.map(w => {
+      if (!w.date && !w.personId) return el('li', { class: w.level, text: w.text });
+      return el('li', {
+        class: w.level + ' clickable' + (isHighlighted(w) ? ' active' : ''), tabindex: 0, text: w.text,
+        title: 'Označi v koledarju',
+        onclick: () => toggleHighlight(w),
+        onkeydown: ev => { if (ev.key === 'Enter') { ev.preventDefault(); toggleHighlight(w); } }
+      });
+    })));
+  }
+
+  // Klik na opozorilo označi osebo (vse termine v mesecu) in/ali dan v koledarju ter se pomakne tja.
+  function isHighlighted(w) {
+    return !!highlight && highlight.personId === w.personId && highlight.date === w.date;
+  }
+
+  function toggleHighlight(w) {
+    const { personId, date } = w;
+    if (isHighlighted(w)) {
+      highlight = null;
+      setStatus('', null);
+    } else {
+      selection = null;
+      highlight = { personId, date };
+      const p = personId && personById(personId);
+      setStatus(p ? `Označeno: ${p.name} (klik ali Esc prekliče)`
+        : `Označen dan: ${S.shortDate(date)} (klik ali Esc prekliče)`, null);
+    }
+    renderSchedule();
+    if (highlight) {
+      const target = (date && $(`#calendar [data-date="${date}"]`)) ||
+        $('#calendar .chip.same-person, #calendar .chip.selected');
+      if (target) target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+    // Seznam opozoril je izrisan na novo – fokus ostane na kliknjenem opozorilu.
+    const li = $('#schedule-warnings li.active');
+    if (li) li.focus({ preventScroll: true });
   }
 
   function noteText(p) { return str(p.note).trim(); }
@@ -968,6 +1013,7 @@
   }
 
   function onChipClick(d, id) {
+    highlight = null;
     if (selection && selection.date === d && selection.personId === id) selection = null;
     else selection = { date: d, personId: id };
     setStatus(selection ? 'Izbrano. Kliknite na dan, kamor želite osebo premakniti (ponovni klik prekliče).' : '', null);
@@ -1041,7 +1087,7 @@
     const res = S.buildSchedule(c, state.persons, y, m, state.schedules);
     state.schedules[key] = { days: res.days, edited: false };
     markLaterStale();
-    selection = null;
+    clearMark();
     save();
     const n = countWarnings(res.warnings);
     const infoText = n.info ? `, informacij: ${n.info}` : '';
@@ -1059,16 +1105,17 @@
     pushUndo('brisanje razporeda');
     delete state.schedules[key];
     markLaterStale();
-    selection = null;
+    clearMark();
     save();
     setStatus('', null);
     renderSchedule();
   });
 
-  // Izbran čip (in z njim označeni termini ter cilji premika) se ne natisne – tudi pri tiskanju s Ctrl+P.
+  // Izbran čip (in z njim označeni termini ter cilji premika) in označba iz opozorila se ne natisneta – tudi pri
+  // tiskanju s Ctrl+P.
   // V desni kot naslova se vpiše čas tiskanja.
   window.addEventListener('beforeprint', () => {
-    if (selection) { selection = null; renderSchedule(); }
+    if (selection || highlight) { clearMark(); renderSchedule(); }
     $('#print-time').textContent = 'Natisnjeno: ' + fmtDateTime(new Date());
   });
   $('#btn-print').addEventListener('click', () => window.print());
@@ -1093,7 +1140,7 @@
   $('#btn-undo').addEventListener('click', undo);
 
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && (selection || editingDay)) {
+    if (e.key === 'Escape' && (selection || editingDay || highlight)) {
       clearScheduleInteraction();
       setStatus('', null);
       renderSchedule();

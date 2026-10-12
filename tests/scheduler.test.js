@@ -96,7 +96,9 @@
   });
   test('Opozorilo pri premajhni kapaciteti', () => {
     const r = S.buildSchedule(corridor({ capacity: { weekday: 1, saturday: 1, sundayHoliday: 0 } }), makePersons(20), 2026, 10, {});
-    assert(r.warnings.some(w => w.level === 'error' && /Kapaciteta premajhna/.test(w.text)));
+    const capW = r.warnings.find(w => w.level === 'error' && /Kapaciteta premajhna/.test(w.text));
+    assert(capW, 'kapaciteta');
+    assert(!('personId' in capW) && !('date' in capW), 'splošno opozorilo brez osebe in dneva');
     assert(r.warnings.some(w => /zamude|ni razporejena/.test(w.text)));
   });
   test('Opozorilo, ko je na en dan v tednu vezanih preveč oseb', () => {
@@ -122,6 +124,20 @@
     assert(w.includes('preveč razporejenih (3 / 2)'), 'kapaciteta');
     assert(/ni veljaven/.test(w), 'nedelja');
     assert(/ni dovoljen dan/.test(w), 'torek');
+  });
+  test('Opozorila imajo dan in osebo', () => {
+    const days = { '2026-10-05': ['p0', 'p1', 'p2'], '2026-10-04': ['tue'] };
+    const w = S.analyzeSchedule(c, persons, 2026, 10, days, {});
+    const over = w.find(x => /preveč razporejenih/.test(x.text));
+    eq(over.date, '2026-10-05');
+    assert(!('personId' in over), 'dan brez osebe');
+    const tue = w.find(x => /ni dovoljen dan/.test(x.text));
+    eq(tue.date, '2026-10-04');
+    eq(tue.personId, 'tue');
+    const missing = w.find(x => /ni razporejena/.test(x.text));
+    assert(missing && missing.personId && !('date' in missing), JSON.stringify(missing));
+    const due = w.find(x => /do konca meseca/.test(x.text));
+    assert(due && due.personId && !('date' in due), JSON.stringify(due));
   });
   test('Ročne izjeme po dnevih', () => {
     const c2 = corridor({ dayOverrides: { '2026-10-15': 0, '2026-10-18': 1, '2026-10-20': 4 } });
@@ -325,7 +341,10 @@
     const p = makePersons(1);
     const prev = { 'c1|2026-09': { days: { '2026-09-15': ['p0'] } } };
     const w = S.analyzeSchedule(c, p, 2026, 10, { '2026-10-01': ['p0'] }, prev);
-    assert(w.some(x => x.level === 'warn' && /6 dni zamude/.test(x.text)), JSON.stringify(w));
+    const late = w.find(x => x.level === 'warn' && /6 dni zamude/.test(x.text));
+    assert(late, JSON.stringify(w));
+    eq(late.personId, 'p0');
+    eq(late.date, '2026-10-01');
     // Če med rokom in kopanjem ni bilo možnega dneva (zaprto), je le informacija.
     const closed = corridor({ dayOverrides: { '2026-09-25': 0, '2026-09-26': 0, '2026-09-28': 0, '2026-09-29': 0, '2026-09-30': 0 } });
     const w2 = S.analyzeSchedule(closed, p, 2026, 10, { '2026-10-01': ['p0'] }, prev);

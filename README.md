@@ -37,7 +37,8 @@ Podatki se shranjujejo v brskalnik (`localStorage`) – **redno izvozite varnost
      Omejitve so vidne in urejene tudi v obrazcu osebe.
      Po spremembi izjem ali omejitev kliknite **Sestavi**, da se razpored ponovno sestavi.
    - Opombe oseb so ob imenu označene s številko, besedilo opomb je pod koledarjem (tudi na natisu).
-   - Pod koledarjem so opozorila (presežena kapaciteta, zamude, nedovoljeni dnevi …) in povzetek po osebah.
+   - Pod koledarjem so opozorila (presežena kapaciteta, zamude, nedovoljeni dnevi …) in povzetek po osebah;
+     klik na opozorilo označi osebo oz. dan v koledarju.
      Povzetek kaže razmike med kopanji; prvi, v oklepaju, je od zadnjega kopanja v prejšnjem mesecu. Razmiki,
      daljši od intervala, so oranžni, zelo kratki pa sivi.
    - Mesece sestavljajte po vrsti. Če razpored prejšnjega meseca manjka, aplikacija pred sestavo vpraša za

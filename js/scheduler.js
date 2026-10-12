@@ -320,10 +320,11 @@
   }
 
   // ---------- analiza (tudi po ročnih popravkih) ----------
-  // Vrne seznam { level: 'error'|'warn'|'info', text }.
+  // Vrne seznam { level: 'error'|'warn'|'info', text, date?, personId? } (date/personId: dan oz. oseba, na katero se
+  // opozorilo nanaša).
   function analyzeSchedule(corridor, persons, year, month, days, schedules) {
     const warnings = [];
-    const push = (level, text) => warnings.push({ level, text });
+    const push = (level, text, extra) => warnings.push(Object.assign({ level, text }, extra));
     const all = monthDays(year, month);
     const start = all[0];
     const mine = persons.filter(p => p.corridorId === corridor.id);
@@ -362,13 +363,14 @@
       const ids = days[d] || [];
       if (!ids.length) return;
       const issue = dayIssue(corridor, d, ids.length);
-      if (issue) push('error', issue + '.');
+      if (issue) push('error', issue + '.', { date: d });
       ids.forEach(id => {
         const p = byId[id];
         if (!p) return;
+        const at = { date: d, personId: p.id };
         const pIssue = personDayIssue(p, d);
-        if (pIssue) push('error', pIssue + '.');
-        if (p.active === false) push('warn', `${p.name}: ni aktivna, a je razporejena ${shortDate(d)}.`);
+        if (pIssue) push('error', pIssue + '.', at);
+        if (p.active === false) push('warn', `${p.name}: ni aktivna, a je razporejena ${shortDate(d)}.`, at);
       });
     });
 
@@ -378,27 +380,28 @@
       const iv = intervalOf(p);
       const avail = validDays.filter(d => personAllows(p, d));
       if (!avail.length) {
-        push('error', `${p.name}: v tem mesecu nima nobenega veljavnega dneva.`);
+        push('error', `${p.name}: v tem mesecu nima nobenega veljavnega dneva.`, { personId: p.id });
         return;
       }
       const dates = Object.keys(days).filter(d => (days[d] || []).includes(p.id)).sort();
       let prev = last[p.id] || null;
       if (!dates.length && !prev) {
-        push('warn', `${p.name}: v tem mesecu ni razporejena.`);
+        push('warn', `${p.name}: v tem mesecu ni razporejena.`, { personId: p.id });
         return;
       }
       dates.forEach(d => {
         if (prev) {
+          const at = { date: d, personId: p.id };
           const gap = diffDays(prev, d);
           const dueD = addDays(prev, iv);
           if (gap > iv) {
             // Rok je lahko še v prejšnjem mesecu, zato se dnevi preverijo po koledarju, ne le v tem mesecu.
             let forced = true;
             for (let x = dueD; x < d && forced; x = addDays(x, 1)) forced = !isAvailable(corridor, p, x);
-            if (forced) push('info', `${p.name}: ${shortDate(d)} – ${nDays(gap)} od prejšnjega kopanja (vmes ni bilo dovoljenega dneva).`);
-            else push('warn', `${p.name}: ${shortDate(d)} – ${nDays(gap)} od prejšnjega kopanja (${nDays(gap - iv)} zamude).`);
+            if (forced) push('info', `${p.name}: ${shortDate(d)} – ${nDays(gap)} od prejšnjega kopanja (vmes ni bilo dovoljenega dneva).`, at);
+            else push('warn', `${p.name}: ${shortDate(d)} – ${nDays(gap)} od prejšnjega kopanja (${nDays(gap - iv)} zamude).`, at);
           } else if (gap < shortGap(p)) {
-            push('info', `${p.name}: ${shortDate(d)} – le ${nDays(gap)} po prejšnjem kopanju.`);
+            push('info', `${p.name}: ${shortDate(d)} – le ${nDays(gap)} po prejšnjem kopanju.`, at);
           }
         }
         prev = d;
@@ -406,7 +409,7 @@
       if (prev) {
         const dueD = addDays(prev, iv);
         if (dueD <= avail[avail.length - 1]) {
-          push('warn', `${p.name}: rok ${shortDate(dueD)} – do konca meseca ni več razporejena.`);
+          push('warn', `${p.name}: rok ${shortDate(dueD)} – do konca meseca ni več razporejena.`, { personId: p.id });
         }
       }
     });

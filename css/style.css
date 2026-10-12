@@ -178,6 +178,11 @@ tr.filters input, tr.filters select { width: 100%; min-width: 4rem; font-size: 0
 #schedule-warnings li.error { color: var(--error); }
 #schedule-warnings li.warn { color: var(--warn); }
 #schedule-warnings li.info { color: var(--muted); }
+#schedule-warnings li.clickable { cursor: pointer; }
+#schedule-warnings li.clickable:hover, #schedule-warnings li.active { background: var(--accent-soft); }
+#schedule-warnings li.active { text-decoration: underline; }
+/* Dan iz klika na opozorilo (outline, da ne trči z .day.over, ki uporablja box-shadow). */
+.day.highlight { outline: 2px solid var(--accent); outline-offset: -2px; }
 #schedule-summary table { max-width: 900px; }
 /* line-height: 0 – nadpisana številka ne poviša vrstice (čipi ostanejo enako visoki). */
 .note-ref { font-size: 0.7em; font-weight: 700; color: var(--accent); margin-left: 1px; line-height: 0; }
@@ -262,6 +267,7 @@ tr.filters input, tr.filters select { width: 100%; min-width: 4rem; font-size: 0
   .chip .x, .add-btn, .day select, .day-count, .edit-cap { display: none !important; }
   .day-note { color: #333; }
   .day.override { border-style: none solid solid none; border-color: #000; }
+  .day.highlight { outline: none; }
   /* Z legendo opomb so celice nižje in pisava čipov manjša, da mesec s 6 tedni ostane na eni strani. */
   #calendar.has-notes .day { min-height: 22mm; }
   #calendar.has-notes .chip { font-size: 9pt; }

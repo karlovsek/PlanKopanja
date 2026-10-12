@@ -522,8 +522,9 @@
   });
   test('Privzeti začetek sestave', () => {
     eq(S.defaultBuildFrom('2026-10', '2026-10-12'), '2026-10-13');
-    eq(S.defaultBuildFrom('2026-10', '2026-10-31'), '');
-    eq(S.defaultBuildFrom('2026-11', '2026-10-12'), '');
+    eq(S.defaultBuildFrom('2026-10', '2026-10-31'), '2026-10-01');
+    eq(S.defaultBuildFrom('2026-11', '2026-10-12'), '2026-11-01');
+    eq(S.defaultBuildFrom('2026-09', '2026-10-12'), '2026-09-01');
     eq(S.buildStart(2026, 10, '2026-10-15'), '2026-10-15');
     eq(S.buildStart(2026, 10, '2026-10-01'), null);
     eq(S.buildStart(2026, 10, '2026-11-03'), null);

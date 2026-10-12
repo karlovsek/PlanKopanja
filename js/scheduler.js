@@ -385,11 +385,12 @@
   }
 
   // Privzeti začetek sestave za mesec `month` ('YYYY-MM'): jutri, če je `today` v tem mesecu in jutri še ni
-  // naslednji mesec, sicer '' (cel mesec).
+  // naslednji mesec, sicer prvi dan meseca (cel mesec).
   function defaultBuildFrom(month, today) {
-    if (!today || today.slice(0, 7) !== month) return '';
+    const first = month + '-01';
+    if (!today || today.slice(0, 7) !== month) return first;
     const next = addDays(today, 1);
-    return next.slice(0, 7) === month ? next : '';
+    return next.slice(0, 7) === month ? next : first;
   }
 
   // ---------- analiza (tudi po ročnih popravkih) ----------

@@ -660,8 +660,7 @@
     if (!state.ui.buildFrom || state.ui.buildFrom.key !== key) {
       state.ui.buildFrom = { key, value: S.defaultBuildFrom(currentMonth(), todayIso()) };
     }
-    const v = state.ui.buildFrom.value || '';
-    return v.slice(0, 7) === currentMonth() ? v : '';
+    return state.ui.buildFrom.value || '';
   }
 
   function showStatus(box, text, level) {
@@ -685,10 +684,11 @@
     undoBtn.disabled = !lastUndo;
     undoBtn.title = lastUndo ? 'Razveljavi: ' + lastUndo.label : '';
     $('#schedule-month').value = currentMonth();
-    const monthDates = S.monthDays(...ym());
+    const [y, m] = ym();
+    const dates = S.monthDays(y, m);
     const fromInput = $('#build-from');
-    fromInput.min = monthDates[0];
-    fromInput.max = monthDates[monthDates.length - 1];
+    fromInput.min = dates[0];
+    fromInput.max = dates[dates.length - 1];
     fromInput.value = buildFrom();
     const cal = $('#calendar');
     cal.innerHTML = '';
@@ -701,7 +701,6 @@
       setStatus('Najprej dodajte hodnik in osebe.', 'warn');
       return;
     }
-    const [y, m] = ym();
     const sched = state.schedules[currentKey()];
     const persons = personsOf(cid);
     const byId = {};
@@ -717,7 +716,6 @@
     document.title = $('#schedule-title').textContent;
 
     WD_ORDER.forEach(w => cal.appendChild(el('div', { class: 'cal-head', text: WD_SHORT[w] })));
-    const dates = S.monthDays(y, m);
     const mark = selection || highlight;
     for (let i = 0; i < (S.weekday(dates[0]) + 6) % 7; i++) cal.appendChild(el('div', { class: 'day blank' }));
 
@@ -1119,15 +1117,14 @@
         'ali kot pri novih osebah. Vseeno sestavim?')) return;
     const [y, m] = ym();
     // Od izbranega dne naprej (prvi dan meseca = cel mesec); prejšnji dnevi ostanejo.
-    const v = buildFrom();
-    const from = v && v > S.monthDays(y, m)[0] ? v : null;
-    if (old && old.edited && !confirm(from
-      ? `Razpored za ta mesec je bil ročno popravljen. Ga res želite na novo sestaviti od ${S.shortDate(from)} naprej (popravki od tega dne naprej, ki niso zaklenjeni, se izgubijo)?`
-      : 'Razpored za ta mesec je bil ročno popravljen. Ga res želite na novo sestaviti (popravki, ki niso zaklenjeni, se izgubijo)?')) return;
+    const from = S.buildStart(y, m, buildFrom());
+    const fromText = from ? ` od ${S.shortDate(from)} naprej` : '';
+    if (old && old.edited && !confirm(`Razpored za ta mesec je bil ročno popravljen. Ga res želite na novo sestaviti${fromText} ` +
+      `(popravki${from ? ' od tega dne naprej' : ''}, ki niso zaklenjeni, se izgubijo)?`)) return;
     pushUndo('sestava');
     // Zaklenjeni termini ostanejo na mestu.
     const res = S.buildSchedule(c, state.persons, y, m, state.schedules, { fixed: (old && old.locked) || {}, from });
-    state.schedules[key] = { days: res.days, edited: from ? !!(old && old.edited) : false };
+    state.schedules[key] = { days: res.days, edited: !!(from && old && old.edited) };
     if (Object.keys(res.locked).length) state.schedules[key].locked = res.locked;
     markLaterStale();
     clearMark();
@@ -1135,9 +1132,7 @@
     const n = countWarnings(res.warnings);
     const infoText = n.info ? `, informacij: ${n.info}` : '';
     const seeBelow = res.warnings.length ? ' (glej spodaj)' : '';
-    const done = from
-      ? `Razpored sestavljen od ${S.shortDate(from)} naprej` + (old ? '' : ` (dnevi pred ${S.shortDate(from)} so prazni)`)
-      : 'Razpored sestavljen';
+    const done = `Razpored sestavljen${fromText}` + (from && !old ? ` (dnevi pred ${S.shortDate(from)} so prazni)` : '');
     setStatus(n.serious
       ? `${done}, opozoril: ${n.serious}${infoText}${seeBelow}.`
       : `${done} brez opozoril${infoText}${seeBelow}.`, n.serious ? 'warn' : 'ok');

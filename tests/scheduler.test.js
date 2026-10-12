@@ -302,6 +302,7 @@
     [[3, 1], [10, 2], [14, 2], [15, 3]].forEach(([iv, n]) => eq(S.pullForwardDays(p(iv)), n, 'pullForwardDays ' + iv));
     assert(current('prekratek-razmik').includes('polovice intervala (zaokroženo navzgor)'), 'kratek razmik: besedilo');
     [[9, 5], [10, 5], [7, 4]].forEach(([iv, n]) => eq(S.shortGap(p(iv)), n, 'shortGap ' + iv));
+    assert(current('zaklenjeni-termini').includes('polovico intervala (zaokroženo navzgor)'), 'zaklenjeni termini: besedilo');
   });
   test('Pravila: seznam praznikov se ujema s holidays.js', () => {
     const text = Rules.RULES.find(r => r.id === 'prazniki' && r.to === null).text.toLowerCase();
@@ -328,15 +329,83 @@
   });
   test('removeFutureBaths odstrani le prihodnje termine na starem hodniku', () => {
     const schedules = {
-      'c1|2026-10': { days: { '2026-10-05': ['p0', 'p1'], '2026-10-20': ['p0', 'p1'] }, edited: false },
+      'c1|2026-10': {
+        days: { '2026-10-05': ['p0', 'p1'], '2026-10-20': ['p0', 'p1'] }, edited: false,
+        locked: { '2026-10-05': ['p0'], '2026-10-20': ['p0', 'p1'] }
+      },
       'c2|2026-10': { days: { '2026-10-20': ['p0'] }, edited: false }
     };
     eq(S.removeFutureBaths(schedules, 'c1', 'p0', '2026-10-12'), 1);
     eq(JSON.stringify(schedules['c1|2026-10'].days), JSON.stringify({ '2026-10-05': ['p0', 'p1'], '2026-10-20': ['p1'] }));
+    eq(JSON.stringify(schedules['c1|2026-10'].locked), JSON.stringify({ '2026-10-05': ['p0'], '2026-10-20': ['p1'] }));
     eq(JSON.stringify(schedules['c2|2026-10'].days), JSON.stringify({ '2026-10-20': ['p0'] }));
     eq(schedules['c1|2026-10'].edited, true);
     eq(schedules['c2|2026-10'].edited, false);
   });
+  // ---------- zaklenjeni termini ----------
+  test('setLocked in isLocked: dodaj, odstrani, prazni ključi se pobrišejo', () => {
+    const s = { days: {} };
+    eq(S.isLocked(s, '2026-10-14', 'p0'), false);
+    eq(S.isLocked(undefined, '2026-10-14', 'p0'), false);
+    S.setLocked(s, '2026-10-14', 'p0', true);
+    S.setLocked(s, '2026-10-14', 'p0', true);
+    S.setLocked(s, '2026-10-14', 'p1', true);
+    eq(JSON.stringify(s.locked), JSON.stringify({ '2026-10-14': ['p0', 'p1'] }));
+    eq(S.isLocked(s, '2026-10-14', 'p1'), true);
+    S.setLocked(s, '2026-10-14', 'p0', false);
+    eq(S.isLocked(s, '2026-10-14', 'p0'), false);
+    S.setLocked(s, '2026-10-14', 'p1', false);
+    assert(!('locked' in s), 'prazen locked se izbriše');
+    S.setLocked(s, '2026-10-15', 'p0', false);
+    assert(!('locked' in s), 'odklep neobstoječega');
+  });
+  test('unschedule odstrani termin in njegov zaklep', () => {
+    const s = { days: { '2026-10-14': ['p0', 'p1'] }, locked: { '2026-10-14': ['p0', 'p1'] } };
+    S.unschedule(s, '2026-10-14', 'p0');
+    eq(JSON.stringify(s), JSON.stringify({ days: { '2026-10-14': ['p1'] }, locked: { '2026-10-14': ['p1'] } }));
+    S.unschedule(s, '2026-10-14', 'p1');
+    eq(JSON.stringify(s), JSON.stringify({ days: { '2026-10-14': [] } }));
+  });
+  test('Zaklenjen termin ostane pri sestavi', () => {
+    const p = makePersons(11);
+    const r = S.buildSchedule(c, p, 2026, 10, {}, { fixed: { '2026-10-14': ['p0'] } });
+    assert(r.days['2026-10-14'].includes('p0'), JSON.stringify(r.days['2026-10-14']));
+    eq(JSON.stringify(r.locked), JSON.stringify({ '2026-10-14': ['p0'] }));
+  });
+  test('Brez kopanja tik pred zaklenjenim terminom, rok se šteje od njega', () => {
+    // Brez zaklepa bi se p0 kopala 10. 10. (rok).
+    const p = makePersons(1);
+    const prev = { 'c1|2026-09': { days: { '2026-09-30': ['p0'] } } };
+    assert(S.buildSchedule(c, p, 2026, 10, prev).days['2026-10-10'].includes('p0'), 'brez zaklepa');
+    const r = S.buildSchedule(c, p, 2026, 10, prev, { fixed: { '2026-10-14': ['p0'] } });
+    const dates = datesOf(r.days, 'p0');
+    assert(!dates.some(d => d >= '2026-10-10' && d <= '2026-10-13'), dates.join(', '));
+    const next = dates.find(d => d > '2026-10-14');
+    assert(next >= '2026-10-22' && next <= '2026-10-24', 'naslednje kopanje ' + next);
+  });
+  test('Zaklenjeni termini in kapaciteta dneva', () => {
+    const p = makePersons(20);
+    const r = S.buildSchedule(c, p, 2026, 10, {}, { fixed: { '2026-10-14': ['p7'] } });
+    assert(r.days['2026-10-14'].length <= 2 && r.days['2026-10-14'].includes('p7'), JSON.stringify(r.days['2026-10-14']));
+    const r3 = S.buildSchedule(c, p, 2026, 10, {}, { fixed: { '2026-10-14': ['p3', 'p7', 'p11'] } });
+    eq(r3.days['2026-10-14'].slice().sort().join(), ['p11', 'p3', 'p7'].join());
+  });
+  test('Zaklenjen termin na dan brez kopanja je v razporedu, analiza ga označi', () => {
+    const p = makePersons(5);
+    const r = S.buildSchedule(c, p, 2026, 10, {}, { fixed: { '2026-10-18': ['p0'] } });
+    eq(JSON.stringify(r.days['2026-10-18']), JSON.stringify(['p0']));
+    assert(r.warnings.some(w => w.level === 'error' && w.date === '2026-10-18'), JSON.stringify(r.warnings));
+  });
+  test('Zaklep neaktivne osebe ali osebe drugega hodnika izpade', () => {
+    const p = makePersons(5);
+    p[1].active = false;
+    p[2].corridorId = 'c2';
+    const r = S.buildSchedule(c, p, 2026, 10, {}, { fixed: { '2026-10-14': ['p1', 'p2'], '2026-10-18': ['p2'] } });
+    eq(JSON.stringify(r.locked), '{}');
+    assert(!r.days['2026-10-14'].includes('p1') && !r.days['2026-10-14'].includes('p2'), JSON.stringify(r.days['2026-10-14']));
+    assert(!r.days['2026-10-18'], 'nedelja brez kopanja');
+  });
+
   test('Zamuda z rokom v prejšnjem mesecu je opozorilo', () => {
     const p = makePersons(1);
     const prev = { 'c1|2026-09': { days: { '2026-09-15': ['p0'] } } };

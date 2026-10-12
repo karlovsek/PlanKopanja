@@ -85,7 +85,12 @@
         'premalo, se danes razporedi toliko dodatnih oseb, kolikor mest bo zmanjkalo (a ne več, kot je danes ' +
         'prostih): izmed oseb, ki jim je današnji dan dovoljen in jim rok poteče v največ max(1, ⌊interval / 5⌋) ' +
         'dneh (pri intervalu 10 torej v 2 dneh) – najprej tiste z najbližjim rokom, nato tiste z več dovoljenimi ' +
-        'dnevi, nato po imenu. Malo prej je bolje kot zamuda.' }
+        'dnevi, nato po imenu. Malo prej je bolje kot zamuda.' },
+    { id: 'zaklenjeni-termini', from: '2026-10-12',
+      text: 'Zaklenjeni termini (🔒) se pri sestavi ohranijo in zasedejo mesto tisti dan (tudi če je dan ' +
+        'nedovoljen ali poln – težave pokaže analiza). Oseba z zaklenjenim terminom ni kandidat na dan, ki je od ' +
+        'zaklenjenega termina oddaljen manj kot polovico intervala (zaokroženo navzgor); po zaklenjenem terminu ' +
+        'se rok šteje od njega.' }
   ] },
   { section: 'Opozorila in informacije', rules: [
     { id: 'opozorila-vir', from: START,
@@ -127,14 +132,20 @@
         'kot opozorilo in v seznamu opozoril.' },
     { id: 'rocni-popravki', from: '2026-10-12',
       text: 'Razpored lahko ročno popravimo: klik na ime ga izbere, klik na drug dan ga premakne, × ga odstrani, ' +
-        '+ doda osebo. Popravki niso blokirani; težave (npr. presežena kapaciteta, nedovoljen dan) se izpišejo ' +
+        '+ doda osebo. 🔒 na imenu termin zaklene (ohrani se ob ponovni sestavi); zaklep se premakne skupaj s ' +
+        'terminom. Popravki niso blokirani; težave (npr. presežena kapaciteta, nedovoljen dan) se izpišejo ' +
         'kot opozorilo in v seznamu opozoril. Zadnjih 20 sprememb v zavihku Razpored (premiki, dodajanja, ' +
-        'odstranitve, izjeme, omejitve, sestava, brisanje) lahko razveljavimo z gumbom »Razveljavi« ali Ctrl+Z; ' +
+        'odstranitve, zaklepi, izjeme, omejitve, sestava, brisanje) lahko razveljavimo z gumbom »Razveljavi« ali Ctrl+Z; ' +
         'ob spremembi hodnikov ali oseb se zgodovina razveljavitev izbriše.' },
-    { id: 'ponovna-sestava', from: START,
+    { id: 'ponovna-sestava', from: START, to: '2026-10-11',
       text: 'Spremembe kapacitet, izjem, oseb in omejitev ne spremenijo že sestavljenega razporeda – upoštevajo se ' +
         'šele ob ponovnem kliku »Sestavi«. Izjema: izbrisana oseba se takoj odstrani iz vseh shranjenih ' +
         'razporedov. Ročno popravljen razpored se na novo sestavi le po potrditvi (popravki se izgubijo).' },
+    { id: 'ponovna-sestava', from: '2026-10-12',
+      text: 'Spremembe kapacitet, izjem, oseb in omejitev ne spremenijo že sestavljenega razporeda – upoštevajo se ' +
+        'šele ob ponovnem kliku »Sestavi«. Izjema: izbrisana oseba se takoj odstrani iz vseh shranjenih ' +
+        'razporedov. Ročno popravljen razpored se na novo sestavi le po potrditvi (popravki, ki niso ' +
+        'zaklenjeni, se izgubijo).' },
     { id: 'zaporedje-mesecev', from: '2026-10-12',
       text: 'Če razpored prejšnjega meseca ni sestavljen (a hodnik ima starejše razporede), sestava meseca ' +
         'zahteva potrditev. Ko se razpored meseca sestavi na novo, ročno popravi ali izbriše, se razporedi ' +

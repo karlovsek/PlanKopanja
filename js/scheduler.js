@@ -186,12 +186,33 @@
       const days = s.days || {};
       Object.keys(days).forEach(d => {
         if (d < fromIso || !days[d].includes(personId)) return;
-        days[d] = days[d].filter(id => id !== personId);
+        unschedule(s, d, personId);
         removed++;
         s.edited = true;
       });
     });
     return removed;
+  }
+
+  // Zaklenjeni termini (sched.locked: { datum: [personId] }) se ob ponovni sestavi ohranijo. Vsak zaklenjen termin
+  // je tudi v sched.days.
+  function isLocked(sched, d, id) {
+    return !!(sched && sched.locked && (sched.locked[d] || []).includes(id));
+  }
+  // Zaklene (on = true) ali odklene termin; prazni dnevi in prazno polje locked se pobrišejo.
+  function setLocked(sched, d, id, on) {
+    const locked = sched.locked || {};
+    const ids = (locked[d] || []).filter(x => x !== id);
+    if (on) ids.push(id);
+    if (ids.length) locked[d] = ids;
+    else delete locked[d];
+    if (Object.keys(locked).length) sched.locked = locked;
+    else delete sched.locked;
+  }
+  // Odstrani termin osebe na dan `d` skupaj z morebitnim zaklepom.
+  function unschedule(sched, d, id) {
+    if (sched.days[d]) sched.days[d] = sched.days[d].filter(x => x !== id);
+    setLocked(sched, d, id, false);
   }
 
   // Razmiki med zaporednimi kopanji osebe: [{ days, fromPrev, level }]; prvi je od `prevIso` (če je podan).
@@ -214,7 +235,9 @@
   function byName(a, b) { return (a.name || '').localeCompare(b.name || '', 'sl'); }
 
   // ---------- sestava ----------
-  function buildSchedule(corridor, persons, year, month, schedules) {
+  // opts.fixed: zaklenjeni termini meseca ({ datum: [personId] }), ki ostanejo na mestu.
+  function buildSchedule(corridor, persons, year, month, schedules, opts) {
+    opts = opts || {};
     const all = monthDays(year, month);
     const start = all[0];
     const active = persons.filter(p => p.corridorId === corridor.id && p.active !== false);
@@ -225,6 +248,22 @@
       const c = capacityOn(corridor, d);
       if (c > 0) { validDays.push(d); cap[d] = c; days[d] = []; }
     });
+
+    // Zaklenjeni termini: le dnevi tega meseca in aktivne osebe hodnika, brez podvojitev.
+    const fixed = opts.fixed || {};
+    const activeById = new Map(active.map(p => [p.id, p]));
+    const locked = {};
+    const lockDates = {};
+    all.forEach(d => {
+      const ids = Array.from(new Set(fixed[d] || [])).filter(id => activeById.has(id));
+      if (!ids.length) return;
+      locked[d] = ids;
+      ids.forEach(id => { (lockDates[id] = lockDates[id] || []).push(d); });
+    });
+    // Oseba počaka na zaklenjen termin, če bi bilo kopanje na dan `d` preblizu njemu.
+    const waitsForLock = (p, d) => (lockDates[p.id] || []).some(f => f > d && diffDays(d, f) < shortGap(p));
+    // Ali ima oseba zaklenjen termin v obdobju (from, to].
+    const lockedBetween = (p, from, to) => (lockDates[p.id] || []).some(f => f > from && f <= to);
 
     const allowedCount = {};
     active.forEach(p => { allowedCount[p.id] = validDays.filter(d => personAllows(p, d)).length; });
@@ -264,11 +303,13 @@
       if (c > 0) { horizon.push(d); cap[d] = c; }
     }
 
-    // Pohlepno dan za dnem.
-    validDays.forEach(d => {
+    // Pohlepno dan za dnem. Zaklenjen termin se vpiše tudi na dan brez kopanja (napako pokaže analiza).
+    all.filter(d => cap[d] > 0 || locked[d]).forEach(d => {
+      if (!days[d]) days[d] = [];
+      const fixedHere = (locked[d] || []).map(id => activeById.get(id));
       const cands = [];
       active.forEach(p => {
-        if (!personAllows(p, d)) return;
+        if (!personAllows(p, d) || fixedHere.includes(p) || waitsForLock(p, d)) return;
         const late = diffDays(due[p.id], d);
         let ok = late >= 0;
         if (!ok) {
@@ -284,12 +325,14 @@
       cands.sort((a, b) => b.late - a.late
         || allowedCount[a.p.id] - allowedCount[b.p.id]
         || byName(a.p, b.p));
-      const taken = cands.slice(0, cap[d]).map(c => c.p);
+      // Zaklenjeni najprej, preostala mesta kandidatom.
+      const taken = fixedHere.concat(cands.slice(0, Math.max(0, (cap[d] || 0) - fixedHere.length)).map(c => c.p));
 
       // Pogled naprej: če v naslednjih nekaj veljavnih dneh rokov ne bo mogoče pokriti s
       // kapaciteto, prosta mesta danes zapolni z osebami z najbližjim rokom (malo prej je
-      // bolje kot zamuda).
-      const free = cap[d] - taken.length;
+      // bolje kot zamuda). Zaklenjeni termini v prihodnjih dneh so že zasedena mesta, njihove osebe pa niso
+      // v povpraševanju.
+      const free = (cap[d] || 0) - taken.length;
       if (free > 0) {
         const idx = horizon.indexOf(d);
         const ahead = horizon.slice(idx + 1, idx + 1 + LOOKAHEAD_DAYS);
@@ -297,12 +340,14 @@
         let excess = 0;
         let slots = 0;
         ahead.forEach((day, j) => {
-          slots += cap[day];
-          const demand = rest.filter(p => due[p.id] <= day && ahead.slice(0, j + 1).some(x => personAllows(p, x))).length;
+          slots += cap[day] - (locked[day] || []).length;
+          const demand = rest.filter(p => due[p.id] <= day
+            && ahead.slice(0, j + 1).some(x => personAllows(p, x))
+            && !lockedBetween(p, d, day)).length;
           excess = Math.max(excess, demand - slots);
         });
         if (excess > 0) {
-          rest.filter(p => personAllows(p, d) && diffDays(d, due[p.id]) <= pullForwardDays(p))
+          rest.filter(p => personAllows(p, d) && !waitsForLock(p, d) && diffDays(d, due[p.id]) <= pullForwardDays(p))
             .sort((a, b) => (due[a.id] < due[b.id] ? -1 : due[a.id] > due[b.id] ? 1 : 0)
               || allowedCount[b.id] - allowedCount[a.id] || byName(a, b))
             .slice(0, Math.min(free, excess))
@@ -310,13 +355,14 @@
         }
       }
 
+      // Rok se šteje od zadnjega kopanja, tudi zaklenjenega.
       taken.forEach(p => {
         days[d].push(p.id);
         due[p.id] = addDays(d, intervalOf(p));
       });
     });
 
-    return { days, warnings: analyzeSchedule(corridor, persons, year, month, days, schedules) };
+    return { days, locked, warnings: analyzeSchedule(corridor, persons, year, month, days, schedules) };
   }
 
   // ---------- analiza (tudi po ročnih popravkih) ----------
@@ -425,7 +471,7 @@
     personAllows, personBlocked, isAvailable, byName,
     DEFAULT_INTERVAL, intervalOf, historyLimit, pullForwardDays, shortGap, bathGaps,
     dayIssue, personDayIssue, scheduleKey, prevMonth, laterScheduleKeys, hasEarlierSchedule,
-    knownLastBaths, removeFutureBaths, buildSchedule, analyzeSchedule
+    knownLastBaths, removeFutureBaths, isLocked, setLocked, unschedule, buildSchedule, analyzeSchedule
   };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.KSScheduler = api;

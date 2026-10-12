@@ -510,7 +510,7 @@
     if (!confirm(`Izbrišem osebo »${p.name}«? Odstranjena bo tudi iz vseh razporedov.`)) return;
     state.persons = state.persons.filter(x => x.id !== p.id);
     Object.values(state.schedules).forEach(s => {
-      Object.keys(s.days || {}).forEach(d => { s.days[d] = s.days[d].filter(id => id !== p.id); });
+      Object.keys(s.days || {}).forEach(d => S.unschedule(s, d, p.id));
     });
     saveClearUndo();
     render();
@@ -745,12 +745,19 @@
         // Izbran čip; ostali termini iste osebe v mesecu so označeni drugače.
         if (mark && mark.personId === id) chipCls.push(mark.date === d ? 'selected' : 'same-person');
         if (!S.personAllows(p, d) || !info.valid) chipCls.push('bad');
+        const lk = S.isLocked(sched, d, id);
+        if (lk) chipCls.push('locked');
         cell.appendChild(el('div', {
           class: chipCls.join(' '),
           title: p.note || '',
           onclick: ev => { ev.stopPropagation(); onChipClick(d, id); }
         }, [
           chipLabel(p, noteNo[id]),
+          el('button', {
+            type: 'button', class: 'lock no-print', text: lk ? '🔒' : '🔓',
+            title: lk ? 'Odkleni termin' : 'Zakleni termin (ohrani se ob ponovni sestavi)',
+            onclick: ev => { ev.stopPropagation(); toggleLock(d, id); }
+          }),
           el('button', {
             type: 'button', class: 'x', title: 'Odstrani', text: '×',
             onclick: ev => { ev.stopPropagation(); removePerson(d, id); }
@@ -1032,8 +1039,11 @@
       return;
     }
     pushUndo('premik');
-    sched.days[from] = (sched.days[from] || []).filter(id => id !== personId);
+    // Zaklep se premakne skupaj s terminom.
+    const wasLocked = S.isLocked(sched, from, personId);
+    S.unschedule(sched, from, personId);
     sched.days[d] = target.concat(personId);
+    if (wasLocked) S.setLocked(sched, d, personId, true);
     const p = personById(personId);
     afterEdit(sched, checkPlacement(d, personId, sched.days[d]),
       `Premaknjeno: ${p ? p.name : 'oseba'} (${S.shortDate(from)} → ${S.shortDate(d)})`);
@@ -1042,10 +1052,22 @@
   function removePerson(d, id) {
     pushUndo('odstranitev');
     const sched = ensureSchedule();
-    sched.days[d] = (sched.days[d] || []).filter(x => x !== id);
+    S.unschedule(sched, d, id);
     if (selection && selection.personId === id) selection = null;
     const p = personById(id);
     afterEdit(sched, [], `Odstranjeno: ${p ? p.name : 'oseba'} (${S.shortDate(d)})`);
+  }
+
+  // Zaklep ne spremeni razporeda (days), zato ostaneta edited in stale kasnejših mesecev nespremenjena.
+  function toggleLock(d, id) {
+    const sched = ensureSchedule();
+    const lk = S.isLocked(sched, d, id);
+    pushUndo(lk ? 'odklep' : 'zaklep');
+    S.setLocked(sched, d, id, !lk);
+    save();
+    const p = personById(id);
+    setStatus(`${lk ? 'Odklenjeno' : 'Zaklenjeno'}: ${p ? p.name : 'oseba'} (${S.shortDate(d)})`, 'ok');
+    renderSchedule();
   }
 
   function showAddSelect(btn, d, ids, persons) {
@@ -1081,11 +1103,13 @@
     if (!state.schedules[S.scheduleKey(c.id, prev)] && S.hasEarlierSchedule(state.schedules, c.id, month) &&
       !confirm(`Razpored za ${monthName(prev)} ni sestavljen, zato bodo roki izračunani iz starejših podatkov ` +
         'ali kot pri novih osebah. Vseeno sestavim?')) return;
-    if (old && old.edited && !confirm('Razpored za ta mesec je bil ročno popravljen. Ga res želite na novo sestaviti (popravki se izgubijo)?')) return;
+    if (old && old.edited && !confirm('Razpored za ta mesec je bil ročno popravljen. Ga res želite na novo sestaviti (popravki, ki niso zaklenjeni, se izgubijo)?')) return;
     pushUndo('sestava');
     const [y, m] = ym();
-    const res = S.buildSchedule(c, state.persons, y, m, state.schedules);
+    // Zaklenjeni termini ostanejo na mestu.
+    const res = S.buildSchedule(c, state.persons, y, m, state.schedules, { fixed: (old && old.locked) || {} });
     state.schedules[key] = { days: res.days, edited: false };
+    if (Object.keys(res.locked).length) state.schedules[key].locked = res.locked;
     markLaterStale();
     clearMark();
     save();

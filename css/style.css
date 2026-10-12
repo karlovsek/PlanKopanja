@@ -171,6 +171,10 @@ tr.filters input, tr.filters select { width: 100%; min-width: 4rem; font-size: 0
 .chip.selected .room { color: #dce8fc; }
 .chip .x { border: 0; background: transparent; padding: 0 0.2rem; font-size: 1rem; line-height: 1; color: inherit; opacity: 0.6; }
 .chip .x:hover { opacity: 1; }
+.chip.locked { border-left: 3px solid var(--accent); }
+/* Ključ in × sta skupaj na desni; odklenjen ključ je viden le ob hoverju ali na izbranem čipu. */
+.chip .lock { border: 0; background: transparent; padding: 0 0.2rem; font-size: 0.75rem; line-height: 1; margin-left: auto; visibility: hidden; }
+.chip:hover .lock, .chip.selected .lock, .chip.locked .lock { visibility: visible; }
 .add-btn { align-self: flex-start; margin-top: auto; padding: 0 0.45rem; font-size: 0.9rem; color: var(--muted); }
 .day select { font-size: 0.85rem; padding: 0.15rem; width: 100%; }
 
@@ -264,7 +268,7 @@ tr.filters input, tr.filters select { width: 100%; min-width: 4rem; font-size: 0
   .day.excluded { background: #e6e6e6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .chip { background: none !important; border: 0; padding: 0; font-size: 9.5pt; color: #000 !important; }
   .chip .room { color: #333 !important; }
-  .chip .x, .add-btn, .day select, .day-count, .edit-cap { display: none !important; }
+  .chip .x, .chip .lock, .add-btn, .day select, .day-count, .edit-cap { display: none !important; }
   .day-note { color: #333; }
   .day.override { border-style: none solid solid none; border-color: #000; }
   .day.highlight { outline: none; }

@@ -870,6 +870,8 @@
   }
 
   function setOverride(c, d, n) {
+    // Vrednost, enaka privzeti kapaciteti dneva, pomeni »brez izjeme«.
+    if (n != null && n === S.defaultCapacity(c, S.dayKind(d))) n = null;
     const old = (c.dayOverrides || {})[d];
     if ((old == null ? null : old) === n) { editingDay = null; renderSchedule(); return; }
     pushUndo('izjema');

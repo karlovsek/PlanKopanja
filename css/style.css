@@ -186,6 +186,8 @@ tr.filters input, tr.filters select { width: 100%; min-width: 4rem; font-size: 0
 .add-btn, .block-btn { padding: 0 0.45rem; font-size: 0.9rem; color: var(--muted); }
 .day-actions .add-btn { border-color: var(--ok); }
 .day-actions .block-btn { border-color: var(--error); }
+.day-actions .add-btn:hover { background: var(--ok); color: #fff; }
+.day-actions .block-btn:hover { background: var(--error); color: #fff; }
 .day select { font-size: 0.85rem; padding: 0.15rem; width: 100%; }
 
 #schedule-warnings ul { padding-left: 1.2rem; }

@@ -18,7 +18,6 @@
   let selection = null; // { date, personId } – izbran čip za premik
   let highlight = null; // { personId, date } – označeno iz opozorila
   let editingDay = null; // datum, za katerega je odprto urejanje izjeme
-  let blockedDay = null; // datum, za katerega je odprt meni omejitev oseb (»Se ne more kopati«)
   let formBlocked = new Set(); // delovna kopija omejitev odprtega obrazca osebe (zapiše se ob shranjevanju)
   let personSort = { key: 'name', dir: 1 }; // razvrščanje tabele oseb (dir: 1 naraščajoče, -1 padajoče)
   const undoStack = []; // [{ label, corridorId, month, snapshot }] – spremembe v zavihku Razpored, samo v pomnilniku
@@ -115,11 +114,10 @@
     });
   }
 
-  // Izbran čip, označba iz opozorila ter odprta urejanje izjeme in meni omejitev veljajo samo, dokler je odprt koledar.
+  // Izbran čip, označba iz opozorila in odprto urejanje izjeme veljajo samo, dokler je odprt koledar.
   function clearScheduleInteraction() {
     clearMark();
     editingDay = null;
-    blockedDay = null;
   }
 
   // Izbran čip in označba iz opozorila (nastavljena je največ ena od njiju).
@@ -740,7 +738,7 @@
           el('span', { class: 'day-note', text: note }),
           el('button', {
             type: 'button', class: 'edit-cap', title: 'Uredi dan: največ oseb', text: '✎',
-            onclick: ev => { ev.stopPropagation(); editingDay = editingDay === d ? null : d; blockedDay = null; renderSchedule(); }
+            onclick: ev => { ev.stopPropagation(); editingDay = editingDay === d ? null : d; renderSchedule(); }
           })
         ])
       ]);
@@ -778,15 +776,21 @@
           })
         ]));
       });
+      // Osebe z omejitvijo (se ta dan ne morejo kopati).
       const blocked = persons.filter(p => S.personBlocked(p, d));
-      if (blocked.length) {
+      blocked.forEach(p => {
         cell.appendChild(el('div', {
-          class: 'day-blocked no-print', title: 'Se ne more kopati',
-          text: '⊘ ' + blocked.map(p => p.name).join(', ')
-        }));
-      }
+          class: 'chip blocked no-print', title: 'Se ne more kopati',
+          onclick: ev => ev.stopPropagation()
+        }, [
+          el('span', {}, ['⊘ ', chipLabel(p)]),
+          el('button', {
+            type: 'button', class: 'x', title: 'Odstrani omejitev', text: '×',
+            onclick: ev => { ev.stopPropagation(); setBlocked(d, p, false); }
+          })
+        ]));
+      });
       if (editingDay === d) cell.appendChild(capacityEditor(c, d, info));
-      if (blockedDay === d) cell.appendChild(blockedEditor(d, persons));
       const canAdd = info.valid || ids.length;
       const canBlock = persons.length > 0 && (canAdd || blocked.length > 0);
       if (canAdd) cell.appendChild(el('span', { class: 'day-count', text: ids.length + ' / ' + cap }));
@@ -801,7 +805,7 @@
           canBlock
             ? el('button', {
                 type: 'button', class: 'block-btn small', title: 'Se ne more kopati (omejitve oseb)', text: '−',
-                onclick: ev => { ev.stopPropagation(); blockedDay = blockedDay === d ? null : d; editingDay = null; renderSchedule(); }
+                onclick: ev => { ev.stopPropagation(); showBlockSelect(ev.currentTarget, d, ids, persons); }
               })
             : null
         ]));
@@ -849,33 +853,7 @@
     ]);
   }
 
-  // Meni omejitev (gumb − na dnevu): osebe, ki se ta dan ne morejo kopati. Spremembe se shranijo takoj.
-  function blockedEditor(d, persons) {
-    const close = () => { blockedDay = null; renderSchedule(); };
-    const blocked = persons.filter(p => S.personBlocked(p, d));
-    const options = persons.filter(p => p.active !== false && !S.personBlocked(p, d));
-    const sel = el('select', { 'aria-label': 'Dodaj omejitev osebi' }, [el('option', { value: '', text: '— dodaj osebo —' })]
-      .concat(options.map(p => el('option', { value: p.id, text: personLabel(p) }))));
-    sel.addEventListener('change', () => { if (sel.value) setBlocked(d, personById(sel.value), true); });
-    sel.addEventListener('keydown', ev => { if (ev.key === 'Escape') { ev.stopPropagation(); close(); } });
-    const closeBtn = el('button', { type: 'button', class: 'small', text: 'Zapri', onclick: close });
-    setTimeout(() => (options.length ? sel : closeBtn).focus(), 0);
-    return el('div', { class: 'cap-edit no-print', onclick: ev => ev.stopPropagation() }, [
-      el('div', { class: 'cap-blocked' }, [
-        el('div', { text: 'Se ne more kopati:' }),
-        blocked.length
-          ? el('ul', {}, blocked.map(p => el('li', {}, [
-              el('span', { text: personLabel(p) }),
-              el('button', { type: 'button', class: 'x', title: 'Odstrani omejitev', text: '×', onclick: () => setBlocked(d, p, false) })
-            ])))
-          : null,
-        options.length ? sel : null
-      ]),
-      el('div', { class: 'cap-edit-buttons' }, [closeBtn])
-    ]);
-  }
-
-  // Omejitev osebe na dan `d`; meni omejitev ostane odprt.
+  // Omejitev osebe na dan `d`.
   function setBlocked(d, p, on) {
     pushUndo('omejitev');
     const dates = new Set(p.blockedDates || []);
@@ -1107,24 +1085,37 @@
     renderSchedule();
   }
 
+  // Gumb + na dnevu: dodaj osebo v razpored.
   function showAddSelect(btn, d, ids, persons) {
     const options = persons.filter(p => !ids.includes(p.id))
       .sort((a, b) => (a.active === false) - (b.active === false) || byName(a, b));
     if (!options.length) { setStatus('Vse osebe so na ta dan že razporejene.', 'warn'); return; }
-    const sel = el('select', { onclick: ev => ev.stopPropagation() }, [el('option', { value: '', text: '— dodaj osebo —' })]
-      .concat(options.map(p => el('option', {
-        value: p.id,
-        text: personLabel(p) + (p.active === false ? ' – neaktivna' : '') + (S.personBlocked(p, d) ? ' – ne more' : '')
-      }))));
-    sel.addEventListener('change', () => {
-      if (!sel.value) return;
+    showPersonSelect(btn, options.map(p => ({
+      p, text: personLabel(p) + (p.active === false ? ' – neaktivna' : '') + (S.personBlocked(p, d) ? ' – ne more' : '')
+    })), 'Dodaj osebo', p => {
       pushUndo('dodajanje');
       const sched = ensureSchedule();
-      sched.days[d] = (sched.days[d] || []).concat(sel.value);
-      const p = personById(sel.value);
-      afterEdit(sched, checkPlacement(d, sel.value, sched.days[d]), `Dodano: ${p.name} (${S.shortDate(d)})`);
+      sched.days[d] = (sched.days[d] || []).concat(p.id);
+      afterEdit(sched, checkPlacement(d, p.id, sched.days[d]), `Dodano: ${p.name} (${S.shortDate(d)})`);
     });
-    // Po izbiri je select že odstranjen (afterEdit je izrisal koledar) – ne izrisuj še enkrat.
+  }
+
+  // Gumb − na dnevu: oseba se ta dan ne more kopati.
+  function showBlockSelect(btn, d, ids, persons) {
+    const options = persons.filter(p => p.active !== false && !S.personBlocked(p, d)).sort(byName);
+    if (!options.length) { setStatus('Vse aktivne osebe imajo ta dan že omejitev.', 'warn'); return; }
+    showPersonSelect(btn, options.map(p => ({
+      p, text: personLabel(p) + (ids.includes(p.id) ? ' – v razporedu' : '')
+    })), 'Se ne more kopati', p => setBlocked(d, p, true));
+  }
+
+  // Izbirnik osebe namesto gumba; zapre se po izbiri, ob izgubi fokusa ali z Escape.
+  function showPersonSelect(btn, options, label, onPick) {
+    const sel = el('select', { 'aria-label': label, onclick: ev => ev.stopPropagation() }, [el('option', { value: '', text: '— dodaj osebo —' })]
+      .concat(options.map(o => el('option', { value: o.p.id, text: o.text }))));
+    sel.addEventListener('change', () => { if (sel.value) onPick(personById(sel.value)); });
+    sel.addEventListener('keydown', ev => { if (ev.key === 'Escape') { ev.stopPropagation(); renderSchedule(); } });
+    // Po izbiri je select že odstranjen (onPick je izrisal koledar) – ne izrisuj še enkrat.
     sel.addEventListener('blur', () => setTimeout(() => { if (sel.isConnected) renderSchedule(); }, 150));
     btn.replaceWith(sel);
     sel.focus();
@@ -1223,7 +1214,7 @@
   $('#btn-undo').addEventListener('click', undo);
 
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && (selection || editingDay || blockedDay || highlight)) {
+    if (e.key === 'Escape' && (selection || editingDay || highlight)) {
       clearScheduleInteraction();
       setStatus('', null);
       renderSchedule();

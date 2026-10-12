@@ -37,10 +37,9 @@ Podatki se shranjujejo v brskalnik (`localStorage`) – **redno izvozite varnost
      ostali termini se razporedijo okoli njega. Zaklep se premakne skupaj s terminom, ne natisne se.
      **Razveljavi** (ali Ctrl+Z) prekliče zadnje spremembe v koledarju (do 20); pri tem se prikaže hodnik in mesec razveljavljene spremembe.
    - `✎` na dnevu nastavi izjemo (največ oseb ta dan); »Privzeto« izjemo odstrani. Dnevi z izjemo imajo črtkan rob.
-   - `−` v spodnjem desnem kotu dneva odpre meni »Se ne more kopati:«: z izbirnikom označite osebe, ki se ta dan ne
-     morejo kopati (npr. pregled, obisk), `×` omejitev odstrani, »Zapri« (ali Esc) meni zapre; spremembe se shranijo takoj.
-     Osebe z omejitvijo so v celici dneva izpisane za znakom `⊘` (ne natisnejo se). Omejitve so vidne in urejene tudi
-     v obrazcu osebe.
+   - `−` v spodnjem desnem kotu dneva odpre izbirnik (kot `+`): izbrana oseba se ta dan ne more kopati (npr. pregled,
+     obisk) in dobi v celici rdeč čip `⊘ Ime`; `×` na čipu omejitev odstrani. Spremembe se shranijo takoj, čipi omejitev
+     se ne natisnejo. Omejitve so vidne in urejene tudi v obrazcu osebe.
      Po spremembi izjem ali omejitev kliknite **Sestavi**, da se razpored ponovno sestavi.
    - Opombe oseb so ob imenu označene s številko, besedilo opomb je pod koledarjem (tudi na natisu).
    - Pod koledarjem so opozorila (presežena kapaciteta, zamude, nedovoljeni dnevi …) in povzetek po osebah;

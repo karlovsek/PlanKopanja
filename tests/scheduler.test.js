@@ -460,6 +460,67 @@
     eq(Rules.validOn({ from: '2026-10-01', to: null }, '2030-01-01'), true);
   });
 
+  // ---------- sestava od dneva ----------
+  test('Sestava od dneva: dnevi pred njim ostanejo nespremenjeni', () => {
+    const p = makePersons(11);
+    const copy = JSON.parse(JSON.stringify(S.buildSchedule(c, p, 2026, 10, {}).days));
+    const moved = copy['2026-10-03'].shift();
+    copy['2026-10-05'] = copy['2026-10-05'].filter(id => id !== moved).concat([moved]);
+    const schedules = { 'c1|2026-10': { days: copy } };
+    const r = S.buildSchedule(c, p, 2026, 10, schedules, { from: '2026-10-15' });
+    const keys = new Set(Object.keys(copy).concat(Object.keys(r.days)));
+    keys.forEach(d => {
+      if (d < '2026-10-15') eq(JSON.stringify(r.days[d] || []), JSON.stringify(copy[d] || []), d);
+    });
+    S.monthDays(2026, 10).filter(d => d >= '2026-10-15').forEach(d => {
+      const cap = S.capacityOn(c, d);
+      if (cap > 0) assert(r.days[d].length <= cap, d + ': ' + r.days[d].length);
+    });
+    p.forEach(x => assert(datesOf(r.days, x.id).some(d => d >= '2026-10-15'), x.id + ' po 15. 10.'));
+    const before = JSON.stringify(copy['2026-10-05']);
+    r.days['2026-10-05'].push('x');
+    eq(JSON.stringify(copy['2026-10-05']), before, 'kopija');
+  });
+  test('Sestava od dneva: rok iz ohranjenih dni', () => {
+    const p = makePersons(1);
+    const schedules = { 'c1|2026-10': { days: { '2026-10-12': ['p0'] } } };
+    const r = S.buildSchedule(c, p, 2026, 10, schedules, { from: '2026-10-15' });
+    eq(JSON.stringify(r.days['2026-10-12']), '["p0"]');
+    const first = datesOf(r.days, 'p0').filter(d => d >= '2026-10-15')[0];
+    assert(first >= S.addDays('2026-10-12', 10 - S.pullForwardDays(p[0])) && first <= '2026-10-24', 'prvi termin ' + first);
+  });
+  test('Sestava od dneva: nova oseba dobi prvi rok od izbranega dne', () => {
+    const p = makePersons(3);
+    const schedules = { 'c1|2026-10': { days: { '2026-10-05': ['p0'], '2026-10-06': ['p1'] } } };
+    const r = S.buildSchedule(c, p, 2026, 10, schedules, { from: '2026-10-15' });
+    const dates = datesOf(r.days, 'p2');
+    assert(dates.length > 0, 'p2 ni razporejena');
+    assert(dates[0] >= '2026-10-15' && dates[0] <= S.addDays('2026-10-15', 10 - 1), 'prvi termin ' + dates[0]);
+  });
+  test('Sestava od dneva: zaklep pred izbranim dnem ostane', () => {
+    const p = makePersons(3);
+    const schedules = { 'c1|2026-10': { days: { '2026-10-05': ['p0', 'p1'] } } };
+    const fixed = { '2026-10-05': ['p0'], '2026-10-06': ['p2'], '2026-10-20': ['p1'] };
+    const r = S.buildSchedule(c, p, 2026, 10, schedules, { fixed, from: '2026-10-15' });
+    eq(JSON.stringify(r.locked['2026-10-05']), '["p0"]');
+    assert(r.days['2026-10-05'].includes('p0'), 'ohranjen termin');
+    eq(r.locked['2026-10-06'], undefined, 'zaklep brez termina');
+    assert(r.locked['2026-10-20'].includes('p1') && r.days['2026-10-20'].includes('p1'), 'zaklep po izbranem dnevu');
+  });
+  test('Sestava od dneva: neveljaven datum = cel mesec', () => {
+    const p = makePersons(11);
+    const base = S.buildSchedule(c, p, 2026, 10, {});
+    ['2026-11-03', '2026-10-01', '', undefined].forEach(from => {
+      const r = S.buildSchedule(c, p, 2026, 10, {}, { from });
+      eq(JSON.stringify(r.days), JSON.stringify(base.days), String(from));
+    });
+  });
+  test('Privzeti začetek sestave', () => {
+    eq(S.defaultBuildFrom('2026-10', '2026-10-12'), '2026-10-13');
+    eq(S.defaultBuildFrom('2026-10', '2026-10-31'), '');
+    eq(S.defaultBuildFrom('2026-11', '2026-10-12'), '');
+  });
+
   // ---------- izpis ----------
   const failed = results.filter(r => !r.ok);
   if (isNode) {

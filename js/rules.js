@@ -59,17 +59,31 @@
     { id: 'zgodovina', from: '2026-10-12',
       text: 'Zadnje kopanje se vzame iz shranjenih razporedov prejšnjih mesecev vseh hodnikov (tudi če je bila ' +
         'oseba medtem premeščena na drug hodnik), zato je treba mesece sestavljati po vrsti. Kopanje, starejše ' +
-        'od 2 × interval + 7 dni pred začetkom meseca, se ne upošteva (oseba velja, kot da zgodovine nima).' },
-    { id: 'prvi-roki', from: START,
+        'od 2 × interval + 7 dni pred začetkom sestave (prvi dan meseca ali izbrani dan), se ne upošteva ' +
+        '(oseba velja, kot da zgodovine nima).' },
+    { id: 'prvi-roki', from: START, to: '2026-10-11',
       text: 'Osebam brez zgodovine se prvi rok določi v prvem intervalu meseca: vsaka dobi tisti dovoljen dan, ' +
         'ki je glede na kapaciteto najmanj zaseden (ob enakosti prejšnji). Najprej se rok določi osebam ' +
         'z najmanj dovoljenimi dnevi v mesecu, nato po imenu. Če v prvem intervalu ni nobenega dovoljenega ' +
-        'dneva, je rok prvi dovoljen dan v mesecu.' }
+        'dneva, je rok prvi dovoljen dan v mesecu.' },
+    { id: 'prvi-roki', from: '2026-10-12',
+      text: 'Osebam brez zgodovine se prvi rok določi v prvem intervalu od začetka sestave (prvi dan meseca ali ' +
+        'izbrani dan): vsaka dobi tisti dovoljen dan, ki je glede na kapaciteto najmanj zaseden (ob enakosti ' +
+        'prejšnji). Najprej se rok določi osebam z najmanj dovoljenimi dnevi v mesecu, nato po imenu. Če v ' +
+        'prvem intervalu ni nobenega dovoljenega dneva, je rok prvi dovoljen dan od začetka sestave.' }
   ] },
   { section: 'Sestavljanje dan za dnem', rules: [
-    { id: 'kandidati', from: START,
+    { id: 'kandidati', from: START, to: '2026-10-11',
       text: 'Razpored se sestavlja po veljavnih dnevih meseca od prvega do zadnjega. Kandidati za dan so ' +
         'aktivne osebe, ki jim je ta dan dovoljen in jim je rok že potekel ali poteče ta dan.' },
+    { id: 'kandidati', from: '2026-10-12',
+      text: 'Razpored se sestavlja po veljavnih dnevih meseca od prvega (pri sestavi od izbranega dne od tega ' +
+        'dne) do zadnjega. Kandidati za dan so aktivne osebe, ki jim je ta dan dovoljen in jim je rok že ' +
+        'potekel ali poteče ta dan.' },
+    { id: 'sestava-od-dne', from: '2026-10-12',
+      text: 'Razpored lahko sestavimo od izbranega dne naprej: dnevi pred njim ostanejo nespremenjeni (tudi ročni ' +
+        'popravki in zaklepi), rok osebe se izračuna tudi iz teh dni, osebe brez zgodovine pa dobijo prvi rok ' +
+        'v intervalu od izbranega dne.' },
     { id: 'dan-prej', from: START,
       text: 'Oseba je kandidat tudi pred rokom, če bi bil njen naslednji možni dan (dovoljen in veljaven) ' +
         'po roku vsaj toliko dni, kot bi bila zdaj prezgodaj. Oseba z rokom na nedeljo je tako kandidat že ' +
@@ -145,7 +159,7 @@
       text: 'Spremembe kapacitet, izjem, oseb in omejitev ne spremenijo že sestavljenega razporeda – upoštevajo se ' +
         'šele ob ponovnem kliku »Sestavi«. Izjema: izbrisana oseba se takoj odstrani iz vseh shranjenih ' +
         'razporedov. Ročno popravljen razpored se na novo sestavi le po potrditvi (popravki, ki niso ' +
-        'zaklenjeni, se izgubijo).' },
+        'zaklenjeni, se izgubijo). Pri sestavi od izbranega dne se izgubijo le popravki od tega dne naprej.' },
     { id: 'zaporedje-mesecev', from: '2026-10-12',
       text: 'Če razpored prejšnjega meseca ni sestavljen (a hodnik ima starejše razporede), sestava meseca ' +
         'zahteva potrditev. Ko se razpored meseca sestavi na novo, ročno popravi ali izbriše, se razporedi ' +

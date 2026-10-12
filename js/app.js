@@ -654,6 +654,15 @@
   }
   function currentKey() { return S.scheduleKey(currentCorridorId(), currentMonth()); }
   function ym() { return currentMonth().split('-').map(Number); }
+  // Začetek sestave (polje »od«) za trenutni hodnik in mesec; ob menjavi enega od njiju se nastavi na privzetega.
+  function buildFrom() {
+    const key = currentKey();
+    if (!state.ui.buildFrom || state.ui.buildFrom.key !== key) {
+      state.ui.buildFrom = { key, value: S.defaultBuildFrom(currentMonth(), todayIso()) };
+    }
+    const v = state.ui.buildFrom.value || '';
+    return v.slice(0, 7) === currentMonth() ? v : '';
+  }
 
   function showStatus(box, text, level) {
     box.textContent = text || '';
@@ -676,6 +685,11 @@
     undoBtn.disabled = !lastUndo;
     undoBtn.title = lastUndo ? 'Razveljavi: ' + lastUndo.label : '';
     $('#schedule-month').value = currentMonth();
+    const monthDates = S.monthDays(...ym());
+    const fromInput = $('#build-from');
+    fromInput.min = monthDates[0];
+    fromInput.max = monthDates[monthDates.length - 1];
+    fromInput.value = buildFrom();
     const cal = $('#calendar');
     cal.innerHTML = '';
     $('#schedule-warnings').innerHTML = '';
@@ -1103,12 +1117,17 @@
     if (!state.schedules[S.scheduleKey(c.id, prev)] && S.hasEarlierSchedule(state.schedules, c.id, month) &&
       !confirm(`Razpored za ${monthName(prev)} ni sestavljen, zato bodo roki izračunani iz starejših podatkov ` +
         'ali kot pri novih osebah. Vseeno sestavim?')) return;
-    if (old && old.edited && !confirm('Razpored za ta mesec je bil ročno popravljen. Ga res želite na novo sestaviti (popravki, ki niso zaklenjeni, se izgubijo)?')) return;
-    pushUndo('sestava');
     const [y, m] = ym();
+    // Od izbranega dne naprej (prvi dan meseca = cel mesec); prejšnji dnevi ostanejo.
+    const v = buildFrom();
+    const from = v && v > S.monthDays(y, m)[0] ? v : null;
+    if (old && old.edited && !confirm(from
+      ? `Razpored za ta mesec je bil ročno popravljen. Ga res želite na novo sestaviti od ${S.shortDate(from)} naprej (popravki od tega dne naprej, ki niso zaklenjeni, se izgubijo)?`
+      : 'Razpored za ta mesec je bil ročno popravljen. Ga res želite na novo sestaviti (popravki, ki niso zaklenjeni, se izgubijo)?')) return;
+    pushUndo('sestava');
     // Zaklenjeni termini ostanejo na mestu.
-    const res = S.buildSchedule(c, state.persons, y, m, state.schedules, { fixed: (old && old.locked) || {} });
-    state.schedules[key] = { days: res.days, edited: false };
+    const res = S.buildSchedule(c, state.persons, y, m, state.schedules, { fixed: (old && old.locked) || {}, from });
+    state.schedules[key] = { days: res.days, edited: from ? !!(old && old.edited) : false };
     if (Object.keys(res.locked).length) state.schedules[key].locked = res.locked;
     markLaterStale();
     clearMark();
@@ -1116,9 +1135,12 @@
     const n = countWarnings(res.warnings);
     const infoText = n.info ? `, informacij: ${n.info}` : '';
     const seeBelow = res.warnings.length ? ' (glej spodaj)' : '';
+    const done = from
+      ? `Razpored sestavljen od ${S.shortDate(from)} naprej` + (old ? '' : ` (dnevi pred ${S.shortDate(from)} so prazni)`)
+      : 'Razpored sestavljen';
     setStatus(n.serious
-      ? `Razpored sestavljen, opozoril: ${n.serious}${infoText}${seeBelow}.`
-      : `Razpored sestavljen brez opozoril${infoText}${seeBelow}.`, n.serious ? 'warn' : 'ok');
+      ? `${done}, opozoril: ${n.serious}${infoText}${seeBelow}.`
+      : `${done} brez opozoril${infoText}${seeBelow}.`, n.serious ? 'warn' : 'ok');
     renderSchedule();
   });
 
@@ -1144,6 +1166,10 @@
   });
   $('#btn-print').addEventListener('click', () => window.print());
 
+  $('#build-from').addEventListener('change', e => {
+    state.ui.buildFrom = { key: currentKey(), value: e.target.value };
+    save();
+  });
   $('#schedule-month').addEventListener('change', e => {
     if (!e.target.value) return;
     state.ui.month = e.target.value;

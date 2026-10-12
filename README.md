@@ -29,6 +29,9 @@ Podatki se shranjujejo v brskalnik (`localStorage`) – **redno izvozite varnost
    Klik na glavo stolpca tabelo razvrsti (ponovni klik obrne vrstni red), polja pod glavo jo filtrirajo
    (iskanje ne loči velikih črk in šumnikov, npr. `zupancic` najde »ŽUPANČIČ«).
 3. **Razpored** – izberite hodnik in mesec ter kliknite **Sestavi**.
+   - Polje »od« ob **Sestavi**: sestavi se le od izbranega dne naprej, dnevi pred njim (tudi ročni popravki) ostanejo,
+     roki se izračunajo tudi iz njih. Če je izbran tekoči mesec, je privzeto jutri (npr. nova oseba sredi meseca);
+     prazno polje = cel mesec.
    - Ročni popravki: klik na ime ga izbere (obarvajo se tudi vsi ostali termini te osebe v mesecu), klik na drug dan ga premakne; `×` odstrani; `+` doda osebo.
      `🔒` na imenu (viden ob premiku miške ali na izbranem čipu) termin zaklene: ob **Sestavi** ostane na mestu,
      ostali termini se razporedijo okoli njega. Zaklep se premakne skupaj s terminom, ne natisne se.

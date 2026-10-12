@@ -73,6 +73,8 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 button.primary:hover { background: #1a5fd0; }
 button.small { padding: 0.15rem 0.5rem; font-size: 0.85rem; }
 button.link-danger { color: var(--error); }
+button.danger { border-color: var(--error); color: var(--error); }
+button.danger:hover { background: var(--error); color: #fff; }
 
 input, select, textarea {
   font: inherit;
@@ -124,6 +126,7 @@ table.list tr.filters td { background: #f0f2f4; padding-top: 0.25rem; padding-bo
 tr.filters input, tr.filters select { width: 100%; min-width: 4rem; font-size: 0.85rem; padding: 0.15rem 0.3rem; }
 
 .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+#btn-clear-schedule { margin-left: auto; }
 .status { padding: 0.5rem 0.75rem; border-radius: 6px; background: var(--accent-soft); }
 .status.warn { background: #fff4e0; color: var(--warn); }
 .status.error { background: #fde8e8; color: var(--error); }

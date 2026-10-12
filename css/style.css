@@ -182,7 +182,8 @@ tr.filters input, tr.filters select { width: 100%; min-width: 4rem; font-size: 0
 /* Ključ in × sta skupaj na desni; odklenjen ključ je viden le ob hoverju ali na izbranem čipu. */
 .chip .lock { border: 0; background: transparent; padding: 0 0.2rem; font-size: 0.75rem; line-height: 1; margin-left: auto; visibility: hidden; }
 .chip:hover .lock, .chip.selected .lock, .chip.locked .lock { visibility: visible; }
-.add-btn { align-self: flex-start; margin-top: auto; padding: 0 0.45rem; font-size: 0.9rem; color: var(--muted); }
+.day-actions { display: flex; justify-content: space-between; margin-top: auto; }
+.add-btn, .block-btn { padding: 0 0.45rem; font-size: 0.9rem; color: var(--muted); }
 .day select { font-size: 0.85rem; padding: 0.15rem; width: 100%; }
 
 #schedule-warnings ul { padding-left: 1.2rem; }
@@ -231,7 +232,6 @@ tr.filters input, tr.filters select { width: 100%; min-width: 4rem; font-size: 0
 .cap-edit { background: #f6f2fd; border: 1px solid #d8c9f3; border-radius: 4px; padding: 0.3rem; font-size: 0.85rem; }
 .cap-edit input { width: 4rem; padding: 0.1rem 0.3rem; }
 .cap-edit-buttons { display: flex; gap: 0.3rem; margin-top: 0.3rem; }
-.cap-blocked { margin-top: 0.4rem; padding-top: 0.3rem; border-top: 1px solid #d8c9f3; }
 .cap-blocked ul { list-style: none; margin: 0.2rem 0; padding: 0; }
 .cap-blocked li { display: flex; justify-content: space-between; align-items: center; gap: 0.2rem; }
 .cap-blocked .x { border: 0; background: transparent; padding: 0 0.2rem; font-size: 1rem; line-height: 1; opacity: 0.6; }
@@ -275,7 +275,7 @@ tr.filters input, tr.filters select { width: 100%; min-width: 4rem; font-size: 0
   .day.excluded { background: #e6e6e6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .chip { background: none !important; border: 0; padding: 0; font-size: 9.5pt; color: #000 !important; }
   .chip .room { color: #333 !important; }
-  .chip .x, .chip .lock, .add-btn, .day select, .day-count, .edit-cap { display: none !important; }
+  .chip .x, .chip .lock, .add-btn, .block-btn, .day select, .day-count, .edit-cap { display: none !important; }
   .day-note { color: #333; }
   .day.override { border-style: none solid solid none; border-color: #000; }
   .day.highlight { outline: none; }

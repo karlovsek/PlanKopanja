@@ -18,7 +18,7 @@
   let selection = null; // { date, personId } – izbran čip za premik
   let highlight = null; // { personId, date } – označeno iz opozorila
   let editingDay = null; // datum, za katerega je odprto urejanje izjeme
-  let focusBlocked = false; // po spremembi omejitve se v urejevalniku dneva fokusira izbirnik oseb
+  let blockedDay = null; // datum, za katerega je odprt meni omejitev oseb (»Se ne more kopati«)
   let formBlocked = new Set(); // delovna kopija omejitev odprtega obrazca osebe (zapiše se ob shranjevanju)
   let personSort = { key: 'name', dir: 1 }; // razvrščanje tabele oseb (dir: 1 naraščajoče, -1 padajoče)
   const undoStack = []; // [{ label, corridorId, month, snapshot }] – spremembe v zavihku Razpored, samo v pomnilniku
@@ -115,10 +115,11 @@
     });
   }
 
-  // Izbran čip, označba iz opozorila in odprto urejanje izjeme veljajo samo, dokler je odprt koledar.
+  // Izbran čip, označba iz opozorila ter odprta urejanje izjeme in meni omejitev veljajo samo, dokler je odprt koledar.
   function clearScheduleInteraction() {
     clearMark();
     editingDay = null;
+    blockedDay = null;
   }
 
   // Izbran čip in označba iz opozorila (nastavljena je največ ena od njiju).
@@ -738,8 +739,8 @@
           el('span', { class: 'day-num', text: String(+d.slice(8)) }),
           el('span', { class: 'day-note', text: note }),
           el('button', {
-            type: 'button', class: 'edit-cap', title: 'Uredi dan: največ oseb, omejitve oseb', text: '✎',
-            onclick: ev => { ev.stopPropagation(); editingDay = editingDay === d ? null : d; focusBlocked = false; renderSchedule(); }
+            type: 'button', class: 'edit-cap', title: 'Uredi dan: največ oseb', text: '✎',
+            onclick: ev => { ev.stopPropagation(); editingDay = editingDay === d ? null : d; blockedDay = null; renderSchedule(); }
           })
         ])
       ]);
@@ -784,13 +785,26 @@
           text: '⊘ ' + blocked.map(p => p.name).join(', ')
         }));
       }
-      if (editingDay === d) cell.appendChild(capacityEditor(c, d, info, persons));
-      if (info.valid || ids.length) {
-        cell.appendChild(el('span', { class: 'day-count', text: ids.length + ' / ' + cap }));
-        cell.appendChild(el('button', {
-          type: 'button', class: 'add-btn small', title: 'Dodaj osebo', text: '+',
-          onclick: ev => { ev.stopPropagation(); showAddSelect(ev.currentTarget, d, ids, persons); }
-        }));
+      if (editingDay === d) cell.appendChild(capacityEditor(c, d, info));
+      if (blockedDay === d) cell.appendChild(blockedEditor(d, persons));
+      const canAdd = info.valid || ids.length;
+      const canBlock = persons.length > 0 && (canAdd || blocked.length > 0);
+      if (canAdd) cell.appendChild(el('span', { class: 'day-count', text: ids.length + ' / ' + cap }));
+      if (canAdd || canBlock) {
+        cell.appendChild(el('div', { class: 'day-actions' }, [
+          canAdd
+            ? el('button', {
+                type: 'button', class: 'add-btn small', title: 'Dodaj osebo', text: '+',
+                onclick: ev => { ev.stopPropagation(); showAddSelect(ev.currentTarget, d, ids, persons); }
+              })
+            : el('span'),
+          canBlock
+            ? el('button', {
+                type: 'button', class: 'block-btn small', title: 'Se ne more kopati (omejitve oseb)', text: '−',
+                onclick: ev => { ev.stopPropagation(); blockedDay = blockedDay === d ? null : d; editingDay = null; renderSchedule(); }
+              })
+            : null
+        ]));
       }
       cal.appendChild(cell);
     });
@@ -809,8 +823,8 @@
     renderSummary(persons, sched.days);
   }
 
-  // Urejevalnik dneva: izjema (največ oseb) in osebe, ki se ta dan ne morejo kopati.
-  function capacityEditor(c, d, info, persons) {
+  // Urejevalnik dneva (✎): izjema (največ oseb).
+  function capacityEditor(c, d, info) {
     const input = el('input', { type: 'number', min: 0, value: info.capacity, 'aria-label': 'Največ oseb' });
     const commit = () => {
       const n = parseInt(input.value, 10);
@@ -822,14 +836,7 @@
       if (ev.key === 'Enter') { ev.preventDefault(); commit(); }
       if (ev.key === 'Escape') { ev.stopPropagation(); close(); }
     });
-    const blocked = persons.filter(p => S.personBlocked(p, d));
-    const options = persons.filter(p => p.active !== false && !S.personBlocked(p, d));
-    const sel = el('select', { 'aria-label': 'Dodaj omejitev osebi' }, [el('option', { value: '', text: '— dodaj osebo —' })]
-      .concat(options.map(p => el('option', { value: p.id, text: personLabel(p) }))));
-    sel.addEventListener('change', () => { if (sel.value) setBlocked(d, personById(sel.value), true); });
-    const focusSel = focusBlocked;
-    focusBlocked = false;
-    setTimeout(() => { if (focusSel) sel.focus(); else { input.focus(); input.select(); } }, 0);
+    setTimeout(() => { input.focus(); input.select(); }, 0);
     return el('div', { class: 'cap-edit no-print', onclick: ev => ev.stopPropagation() }, [
       el('label', {}, ['Največ oseb ', input]),
       el('div', { class: 'cap-edit-buttons' }, [
@@ -838,7 +845,22 @@
         info.override
           ? el('button', { type: 'button', class: 'small', text: 'Privzeto', title: 'Odstrani izjemo', onclick: () => setOverride(c, d, null) })
           : null
-      ]),
+      ])
+    ]);
+  }
+
+  // Meni omejitev (gumb − na dnevu): osebe, ki se ta dan ne morejo kopati. Spremembe se shranijo takoj.
+  function blockedEditor(d, persons) {
+    const close = () => { blockedDay = null; renderSchedule(); };
+    const blocked = persons.filter(p => S.personBlocked(p, d));
+    const options = persons.filter(p => p.active !== false && !S.personBlocked(p, d));
+    const sel = el('select', { 'aria-label': 'Dodaj omejitev osebi' }, [el('option', { value: '', text: '— dodaj osebo —' })]
+      .concat(options.map(p => el('option', { value: p.id, text: personLabel(p) }))));
+    sel.addEventListener('change', () => { if (sel.value) setBlocked(d, personById(sel.value), true); });
+    sel.addEventListener('keydown', ev => { if (ev.key === 'Escape') { ev.stopPropagation(); close(); } });
+    const closeBtn = el('button', { type: 'button', class: 'small', text: 'Zapri', onclick: close });
+    setTimeout(() => (options.length ? sel : closeBtn).focus(), 0);
+    return el('div', { class: 'cap-edit no-print', onclick: ev => ev.stopPropagation() }, [
       el('div', { class: 'cap-blocked' }, [
         el('div', { text: 'Se ne more kopati:' }),
         blocked.length
@@ -848,17 +870,17 @@
             ])))
           : null,
         options.length ? sel : null
-      ])
+      ]),
+      el('div', { class: 'cap-edit-buttons' }, [closeBtn])
     ]);
   }
 
-  // Omejitev osebe na dan `d`; urejevalnik dneva ostane odprt.
+  // Omejitev osebe na dan `d`; meni omejitev ostane odprt.
   function setBlocked(d, p, on) {
     pushUndo('omejitev');
     const dates = new Set(p.blockedDates || []);
     if (on) dates.add(d); else dates.delete(d);
     p.blockedDates = Array.from(dates).sort();
-    focusBlocked = true;
     save();
     const sched = state.schedules[currentKey()];
     const hint = sched ? ' Kliknite »Sestavi«, da se upošteva v razporedu.' : '';
@@ -1201,7 +1223,7 @@
   $('#btn-undo').addEventListener('click', undo);
 
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && (selection || editingDay || highlight)) {
+    if (e.key === 'Escape' && (selection || editingDay || blockedDay || highlight)) {
       clearScheduleInteraction();
       setStatus('', null);
       renderSchedule();

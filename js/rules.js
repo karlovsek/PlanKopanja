@@ -40,9 +40,14 @@
     { id: 'omejitve-datumov', from: START, to: '2026-10-11',
       text: 'Za osebo lahko v urejevalniku dneva (✎, »Se ne more kopati«) označimo posamezne dneve, ko se ne more ' +
         'kopati (npr. pregled, obisk). Tak dan za osebo velja kot nedovoljen – pri sestavi in pri preverjanju.' },
-    { id: 'omejitve-datumov', from: '2026-10-12',
+    { id: 'omejitve-datumov', from: '2026-10-12', to: '2026-10-12',
       text: 'Za osebo lahko označimo dneve, ko se ne more kopati (npr. pregled, obisk, bolnišnica): posamezne dneve ' +
         'v urejevalniku dneva (✎, »Se ne more kopati«) ali obdobje od–do (največ 366 dni) v obrazcu osebe. ' +
+        'Tak dan za osebo velja kot nedovoljen – pri sestavi in pri preverjanju. Omejitve, starejše od 400 dni, ' +
+        'se ob zagonu aplikacije samodejno izbrišejo.' },
+    { id: 'omejitve-datumov', from: '2026-10-13',
+      text: 'Za osebo lahko označimo dneve, ko se ne more kopati (npr. pregled, obisk, bolnišnica): posamezne dneve ' +
+        'v koledarju (gumb − na dnevu, »Se ne more kopati«) ali obdobje od–do (največ 366 dni) v obrazcu osebe. ' +
         'Tak dan za osebo velja kot nedovoljen – pri sestavi in pri preverjanju. Omejitve, starejše od 400 dni, ' +
         'se ob zagonu aplikacije samodejno izbrišejo.' },
     { id: 'premik-hodnika', from: '2026-10-12',

@@ -1090,9 +1090,8 @@
     const options = persons.filter(p => !ids.includes(p.id))
       .sort((a, b) => (a.active === false) - (b.active === false) || byName(a, b));
     if (!options.length) { setStatus('Vse osebe so na ta dan že razporejene.', 'warn'); return; }
-    showPersonSelect(btn, options.map(p => ({
-      p, text: personLabel(p) + (p.active === false ? ' – neaktivna' : '') + (S.personBlocked(p, d) ? ' – ne more' : '')
-    })), 'Dodaj osebo', p => {
+    const text = p => personLabel(p) + (p.active === false ? ' – neaktivna' : '') + (S.personBlocked(p, d) ? ' – ne more' : '');
+    showPersonSelect(btn, options, text, 'Dodaj osebo', p => {
       pushUndo('dodajanje');
       const sched = ensureSchedule();
       sched.days[d] = (sched.days[d] || []).concat(p.id);
@@ -1104,15 +1103,14 @@
   function showBlockSelect(btn, d, ids, persons) {
     const options = persons.filter(p => p.active !== false && !S.personBlocked(p, d)).sort(byName);
     if (!options.length) { setStatus('Vse aktivne osebe imajo ta dan že omejitev.', 'warn'); return; }
-    showPersonSelect(btn, options.map(p => ({
-      p, text: personLabel(p) + (ids.includes(p.id) ? ' – v razporedu' : '')
-    })), 'Se ne more kopati', p => setBlocked(d, p, true));
+    showPersonSelect(btn, options, p => personLabel(p) + (ids.includes(p.id) ? ' – v razporedu' : ''),
+      'Se ne more kopati', p => setBlocked(d, p, true));
   }
 
   // Izbirnik osebe namesto gumba; zapre se po izbiri, ob izgubi fokusa ali z Escape.
-  function showPersonSelect(btn, options, label, onPick) {
+  function showPersonSelect(btn, options, optionText, label, onPick) {
     const sel = el('select', { 'aria-label': label, onclick: ev => ev.stopPropagation() }, [el('option', { value: '', text: '— dodaj osebo —' })]
-      .concat(options.map(o => el('option', { value: o.p.id, text: o.text }))));
+      .concat(options.map(p => el('option', { value: p.id, text: optionText(p) }))));
     sel.addEventListener('change', () => { if (sel.value) onPick(personById(sel.value)); });
     sel.addEventListener('keydown', ev => { if (ev.key === 'Escape') { ev.stopPropagation(); renderSchedule(); } });
     // Po izbiri je select že odstranjen (onPick je izrisal koledar) – ne izrisuj še enkrat.

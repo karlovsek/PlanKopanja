@@ -259,10 +259,15 @@
   function deleteCorridor(c) {
     const n = personsOf(c.id).length;
     if (!confirm(`Izbrišem hodnik »${c.name}«? Izbrisane bodo tudi vse njegove osebe (${n}) in razporedi.`)) return;
+    const gone = personsOf(c.id).map(p => p.id);
     state.corridors = state.corridors.filter(x => x.id !== c.id);
     state.persons = state.persons.filter(p => p.corridorId !== c.id);
     const prefix = S.scheduleKey(c.id, '');
     Object.keys(state.schedules).forEach(k => { if (k.indexOf(prefix) === 0) delete state.schedules[k]; });
+    // Izbrisane osebe (lahko so bile prej na drugem hodniku) se odstranijo tudi iz razporedov drugih hodnikov.
+    Object.values(state.schedules).forEach(s => {
+      Object.keys(s.days || {}).forEach(d => gone.forEach(id => S.unschedule(s, d, id)));
+    });
     saveClearUndo();
     render();
   }
@@ -283,6 +288,7 @@
       errBox.hidden = false;
       return;
     }
+    if (!f.name.value.trim()) { f.name.value = ''; f.name.reportValidity(); return; }
     const cap = input => Math.max(0, parseInt(input.value, 10) || 0);
     const data = {
       name: f.name.value.trim(),
@@ -532,6 +538,7 @@
     e.preventDefault();
     const f = personForm;
     if (!currentCorridorId()) return;
+    if (!f.name.value.trim()) { f.name.value = ''; f.name.reportValidity(); return; }
     const data = {
       name: f.name.value.trim(),
       room: f.room.value.trim(),

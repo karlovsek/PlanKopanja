@@ -2,7 +2,9 @@
 (function (root) {
   'use strict';
 
+  const S = (typeof module !== 'undefined' && module.exports) ? require('./scheduler.js') : root.KSScheduler;
   const KEY = 'kopalniSeznam.v1';
+  const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
   function empty() {
     return { version: 1, corridors: [], persons: [], schedules: {}, ui: {} };
@@ -22,7 +24,7 @@
             saturday: excl.includes(6) ? 0 : per,
             sundayHoliday: (excl.includes(0) || c.skipHolidays !== false) ? 0 : per
           }
-        : Object.assign({}, root.KSScheduler.DEFAULT_CAPACITY);
+        : Object.assign({}, S.DEFAULT_CAPACITY);
     }
     if (!out.dayOverrides) {
       out.dayOverrides = {};
@@ -38,7 +40,45 @@
     ['name', 'room', 'note'].forEach(k => { if (out[k] != null && typeof out[k] !== 'string') out[k] = String(out[k]); });
     // Dnevi, ko se oseba ne more kopati: urejeno polje veljavnih ISO datumov brez podvojitev.
     const blocked = Array.isArray(p.blockedDates) ? p.blockedDates : [];
-    out.blockedDates = Array.from(new Set(blocked.filter(d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d)))).sort();
+    out.blockedDates = Array.from(new Set(blocked.filter(d => typeof d === 'string' && ISO_DATE.test(d)))).sort();
+    // Dovoljeni dnevi v tednu so števila 0–6 (JSON od drugod ima lahko nize, npr. ["1", "3"]).
+    if (Array.isArray(p.allowedWeekdays)) {
+      out.allowedWeekdays = Array.from(new Set(p.allowedWeekdays.map(Number)
+        .filter(w => Number.isInteger(w) && w >= 0 && w <= 6)));
+    } else if ('allowedWeekdays' in p) {
+      // Npr. niz "1,3" bi z .includes() napačno ujemal; prazno polje = vsi dnevi (kot pri novi osebi).
+      out.allowedWeekdays = [];
+    }
+    return out;
+  }
+
+  // { 'YYYY-MM-DD': [id oseb] } iz poljubne vrednosti: samo ISO datumi, polja in nizi; drugo se izpusti.
+  function dateLists(obj) {
+    const out = {};
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return out;
+    Object.keys(obj).forEach(d => {
+      if (ISO_DATE.test(d) && Array.isArray(obj[d])) out[d] = obj[d].filter(id => typeof id === 'string');
+    });
+    return out;
+  }
+
+  // Razpored meseca ima vedno objekt `days` s polji id-jev (sicer bi koledar, analiza in urejanje ob uvozu
+  // okvarjene datoteke padli); enako `locked`, ki se brez zaklepov pobriše (kot v setLocked).
+  function normalizeSchedules(s) {
+    const out = {};
+    if (!s || typeof s !== 'object') return out;
+    Object.keys(s).forEach(k => {
+      const v = s[k];
+      if (!v || typeof v !== 'object') return;
+      const sched = Object.assign({}, v, { days: dateLists(v.days) });
+      if ('locked' in v) {
+        const locked = dateLists(v.locked);
+        Object.keys(locked).forEach(d => { if (!locked[d].length) delete locked[d]; });
+        if (Object.keys(locked).length) sched.locked = locked;
+        else delete sched.locked;
+      }
+      out[k] = sched;
+    });
     return out;
   }
 
@@ -48,7 +88,7 @@
       version: 1,
       corridors: Array.isArray(s.corridors) ? s.corridors.map(normalizeCorridor) : [],
       persons: Array.isArray(s.persons) ? s.persons.map(normalizePerson) : [],
-      schedules: (s.schedules && typeof s.schedules === 'object') ? s.schedules : {},
+      schedules: normalizeSchedules(s.schedules),
       ui: (s.ui && typeof s.ui === 'object') ? s.ui : {}
     };
   }
@@ -113,5 +153,7 @@
     });
   }
 
-  root.KSStorage = { KEY, empty, load, save, exportJSON, importFile };
+  const api = { KEY, empty, normalize, load, save, exportJSON, importFile };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.KSStorage = api;
 })(this);

@@ -7,6 +7,7 @@
   const S = isNode ? require('../js/scheduler.js') : root.KSScheduler;
   const Csv = isNode ? require('../js/csv.js') : root.KSCsv;
   const Rules = isNode ? require('../js/rules.js') : root.KSRules;
+  const St = isNode ? require('../js/storage.js') : root.KSStorage;
 
   const results = [];
   function test(name, fn) {
@@ -256,6 +257,62 @@
     const r = Csv.parsePersons('NOVAK JANEZ\t202\nKRANJC MARIJA\t203\nHORVAT ANA\t');
     eq(r.persons.map(p => p.name + '/' + p.room).join('|'), 'NOVAK JANEZ/202|KRANJC MARIJA/203|HORVAT ANA/', 'ime, soba');
     eq(Csv.parsePersons('202\tNOVAK JANEZ\n\tKRANJC MARIJA').persons.map(p => p.name).join('|'), 'NOVAK JANEZ|KRANJC MARIJA', 'soba, ime');
+  });
+
+  test('Uvoz: glava s sobo brez prepoznanega stolpca z imenom', () => {
+    const r = Csv.parsePersons('Soba;Oseba\n202;NOVAK JANEZ');
+    eq(r.persons.map(p => p.name + '/' + p.room).join('|'), 'NOVAK JANEZ/202', 'ime iz ostalih stolpcev');
+    eq(r.bad.length, 0, 'ni neveljavnih vrstic');
+  });
+
+  // ---------- uvoz JSON (normalizacija stanja) ----------
+  test('Uvoz JSON: okvarjeni razporedi', () => {
+    const st = St.normalize({
+      corridors: [], persons: [],
+      schedules: {
+        'c1|2026-11': {
+          days: { '2026-11-03': 'abc', '2026-11-04': ['p1', 7, null, 'p2'], 'jutri': ['p1'] },
+          locked: { '2026-11-03': 'p1', '2026-11-04': ['p1'], '2026-11-05': [5] }
+        },
+        'c1|2026-12': { days: ['p1'], locked: 'x' },
+        'c2|2026-11': { edited: true },
+        'c3|2026-11': 'abc'
+      }
+    });
+    const nov = st.schedules['c1|2026-11'];
+    eq(JSON.stringify(nov.days), JSON.stringify({ '2026-11-04': ['p1', 'p2'] }), 'days');
+    eq(JSON.stringify(nov.locked), JSON.stringify({ '2026-11-04': ['p1'] }), 'locked');
+    eq(JSON.stringify(st.schedules['c1|2026-12'].days), '{}', 'days kot polje');
+    assert(!('locked' in st.schedules['c1|2026-12']), 'prazen locked se pobriše');
+    eq(JSON.stringify(st.schedules['c2|2026-11'].days), '{}', 'manjkajoč days');
+    eq(st.schedules['c2|2026-11'].edited, true, 'ostala polja ostanejo');
+    assert(!('c3|2026-11' in st.schedules), 'razpored, ki ni objekt, se izpusti');
+    S.unschedule(nov, '2026-11-03', 'p1');
+    S.unschedule(nov, '2026-11-04', 'p1');
+    eq(JSON.stringify(nov.days['2026-11-04']), JSON.stringify(['p2']), 'unschedule');
+    assert(!('locked' in nov), 'zadnji zaklep odstranjen');
+  });
+
+  test('Uvoz JSON: dovoljeni dnevi v tednu', () => {
+    const ps = St.normalize({ corridors: [], persons: [
+      { id: 'a', allowedWeekdays: ['1', '3', '9', 'x', 1] },
+      { id: 'b', allowedWeekdays: '1,3' },
+      { id: 'c' }
+    ] }).persons;
+    eq(JSON.stringify(ps[0].allowedWeekdays), '[1,3]', 'nizi v števila, neveljavni izpuščeni');
+    eq(JSON.stringify(ps[1].allowedWeekdays), '[]', 'niz → vsi dnevi');
+    assert(!('allowedWeekdays' in ps[2]), 'manjkajoč ključ ostane manjkajoč');
+  });
+
+  test('Uvoz JSON: star format hodnika (capacityPerDay)', () => {
+    const cs = St.normalize({ corridors: [
+      { id: 'c1', capacityPerDay: 3, excludedWeekdays: [6], extraExcludedDates: ['2026-11-10'] },
+      { id: 'c2' }
+    ], persons: [] }).corridors;
+    eq(JSON.stringify(cs[0].capacity), JSON.stringify({ weekday: 3, saturday: 0, sundayHoliday: 0 }), 'kapaciteta');
+    eq(JSON.stringify(cs[0].dayOverrides), JSON.stringify({ '2026-11-10': 0 }), 'izjeme');
+    assert(!('capacityPerDay' in cs[0]), 'stara polja pobrisana');
+    eq(JSON.stringify(cs[1].capacity), JSON.stringify(S.DEFAULT_CAPACITY), 'privzeta kapaciteta');
   });
 
   // ---------- pravila razporejanja ----------

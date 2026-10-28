@@ -91,6 +91,8 @@
         name: head.map((x, i) => (COLUMNS.name.test(x) ? i : -1)).filter(i => i >= 0),
         note: head.findIndex(x => COLUMNS.note.test(x))
       };
+      // Glava s sobo, a brez prepoznanega stolpca z imenom (npr. "Soba;Oseba"): ime so ostali stolpci.
+      if (!col.name.length) col.name = head.map((x, i) => i).filter(i => i !== col.room && i !== col.note);
       lines.slice(0, h).forEach(l => bad.push(l.trim()));
       lines.splice(0, h + 1);
     } else {

@@ -23,19 +23,22 @@ Scripts load in this order in `index.html`: `holidays.js` → `scheduler.js` →
 tests cover; keep them that way. In the browser they expose `KSHolidays`, `KSScheduler`, `KSRules`, `KSCsv` on
 `window`; under Node they export the same
 API via `module.exports` instead, so the tests can `require` them. `storage.js` (`KSStorage`: `localStorage`, JSON
-export/import via `document`, `Blob`, `FileReader`) and `app.js` (UI: tabs, dialogs, calendar, print; no global) are
-browser-only.
+export/import via `document`, `Blob`, `FileReader`) uses browser APIs only inside its functions, never at load, so it
+follows the same export pattern; under Node only `normalize()` is usable and tested. `app.js` (UI: tabs, dialogs,
+calendar, print; no global) is browser-only.
 
 **State** (one object, persisted as JSON in `localStorage` under key `kopalniSeznam.v1`):
 `{ version: 1, corridors: [], persons: [], schedules: {}, ui: {} }`.
 - `schedules` is keyed by `corridorId + '|' + 'YYYY-MM'` (`KSScheduler.scheduleKey`); each value is
   `{ days: { 'YYYY-MM-DD': [personId, ...] }, edited }`.
 - `persons[].blockedDates` (sorted ISO dates) are days the person cannot bathe; `personAllows()` treats them as
-  disallowed, so the algorithm and analysis honour them. Edited in the calendar day editor (✎).
+  disallowed, so the algorithm and analysis honour them. Edited in the calendar (− button on a day, × on a
+  blocked tile) and as from–to periods in the person form.
 - `ui` holds the selected tab / corridor / month so the app reopens where the user left it.
 - `storage.js` `normalize()` migrates older corridor formats (`capacityPerDay`, `excludedWeekdays`, …) to
-  `capacity: { weekday, saturday, sundayHoliday }` + `dayOverrides: { date: n }`. Keep it backward compatible; JSON
-  import goes through the same normalization.
+  `capacity: { weekday, saturday, sundayHoliday }` + `dayOverrides: { date: n }`, and sanitizes hand-made JSON
+  (schedule `days`/`locked` become `{ ISO date: [string ids] }`, `allowedWeekdays` integers 0–6). Keep it backward
+  compatible; JSON import goes through the same normalization.
 - **Do not rename the storage key** — existing users' data would appear lost. (The app was renamed from
   »Kopalni seznam«; the key intentionally kept the old name.)
 

@@ -202,6 +202,7 @@ tr.filters input, tr.filters select { width: 100%; min-width: 4rem; font-size: 0
 /* Dan iz klika na opozorilo (outline, da ne trči z .day.over, ki uporablja box-shadow). */
 .day.highlight { outline: 2px solid var(--accent); outline-offset: -2px; }
 #schedule-summary table { max-width: 900px; }
+#schedule-summary tbody tr:hover td { background: var(--accent-soft); }
 /* line-height: 0 – nadpisana številka ne poviša vrstice (ploščice ostanejo enako visoke). */
 .note-ref { font-size: 0.7em; font-weight: 700; color: var(--accent); margin-left: 1px; line-height: 0; }
 .chip.selected .note-ref { color: #fff; }
